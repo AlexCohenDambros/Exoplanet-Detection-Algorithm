@@ -1,0 +1,6 @@
+pandas
+numpy
+lightkurve
+bs4
+requests
+selenium
