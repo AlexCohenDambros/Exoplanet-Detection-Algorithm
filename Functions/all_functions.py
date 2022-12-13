@@ -26,6 +26,8 @@ from selenium.webdriver.chrome.options import Options
 import warnings
 import time
 import glob
+import os
+import shutil
 
 
 # ============= RandomState =============
@@ -41,7 +43,7 @@ def read_dataset(telescope_name=None):
 
     telescopes = ['tess', 'k2', 'kepler']
 
-    if telescope_name == None:
+    if telescope_name is None:
         raise TypeError(
             "read_dataset() missing 1 required positional argument: 'telescope_name'")
 
@@ -86,49 +88,100 @@ def download_all_datasets():
         This algorithm automatically selects and downloads data from the K2, KEPLER, and TESS space 
         telescopes from the NASA Exoplanet Archive website.
     """
-
-    # ============= Options =============
-    chrome_options = Options()
-    chrome_options.add_experimental_option("detach", True)
-
-    # ============= Diretorio
-    prefs = {"profile.default_content_settings.popups": 0,
-             "download.default_directory": 
-                        r"C:/Users/alex-/Desktop/Dev/Exoplanet-Detection-Algorithm/Datasets/TESS",
-             "directory_upgrade": True}
-    chrome_options.add_experimental_option("prefs", prefs)
-
-    # ============= Path =============
-    PATH = "/path/to/chromedriver"
-    # chrome_options = chrome_options
-    driver = webdriver.Chrome(PATH, chrome_options=chrome_options)
+    
+    # ============= Create folders =============
+    create_datasets()
+    
+    # ============= get path to download =============
+    get_current_path = os.getcwd() + "\\Datasets2"
 
     # ============= URL =============
     urlTESS = 'https://exoplanetarchive.ipac.caltech.edu/cgi-bin/TblView/nph-tblView?app=ExoTbls&config=TOI'
     urlKEPLER = 'https://exoplanetarchive.ipac.caltech.edu/cgi-bin/TblView/nph-tblView?app=ExoTbls&config=cumulative'
     urlK2 = 'https://exoplanetarchive.ipac.caltech.edu/cgi-bin/TblView/nph-tblView?app=ExoTbls&config=k2pandc'
 
-    list_urls = [urlTESS, urlKEPLER, urlK2]
-
+    list_urls = {"TESS": urlTESS, "KEPLER": urlKEPLER, "K2": urlK2} 
+    
     # ============= Passing through all URLs =============
-    # for url in list_urls:
+    for telescope, url in list_urls.items():
 
-    #     try:
-    #         # ============= Open URL =============
-    #         driver.get(url)
+        try:
+            
+            # ============= Options =============
+            chrome_options = Options()
+            old_latest_file = get_current_path
+            
+            # ============= Directory =============
+            prefs = {"profile.default_content_settings.popups": 0,
+                    "download.default_directory": old_latest_file + f"\\{telescope}\\",
+                    "directory_upgrade": True}
+            chrome_options.add_experimental_option("prefs", prefs)
 
-    #     except Exception as error:
-    #         print(error)
-    driver.get(urlTESS)
+            # ============= Path =============
+            PATH = "/path/to/chromedriver"
+            driver = webdriver.Chrome(PATH, chrome_options=chrome_options)
+            
+            # ============= Open URL =============
+            driver.get(url)
+            
+            time.sleep(5)
     
-    time.sleep(5)
+            driver.execute_script(
+                "document.baixar = () => [...document.querySelectorAll(`div`)].filter(a => a.textContent.includes(`Download Table`)).filter(a => a.className.includes(`sub_item_text`))[0].parentElement.click()")    
+            driver.execute_script("document.baixar()")
+
+            # Espera o download ser realizado para continuar
+            t = 0
+            while(t < 600):
+                time.sleep(1)
+                list_of_files = glob.glob(get_current_path + f"\\{telescope}\\*.crdownload")
+                new_latest_file = max(list_of_files, key=os.path.getctime) # Pega o ultimo arquivo baixado
+                
+                if os.path.isfile(new_latest_file):
+                    break
+
+                t += 1
+
+            time.sleep(15)
+            driver.close()
+            driver.quit()
+
+        except Exception as error:
+            print(error)
+        
     
-    driver.execute_script(
-        "document.baixar = () => [...document.querySelectorAll(`div`)].filter(a => a.textContent.includes(`Download Table`)).filter(a => a.className.includes(`sub_item_text`))[0].parentElement.click()")    
-    driver.execute_script("document.baixar()")
+def create_datasets():
     
-    time.sleep(15)
-    driver.close()
-    driver.quit()
+    get_current_path = os.getcwd()
+
+    # Path
+    path = os.path.join(get_current_path, 'Datasets2')
     
+    # ============= Create the directory =============
+    try:
+        if os.path.exists(path):
+            shutil.rmtree(path, ignore_errors=True)
+            os.makedirs(path, exist_ok = True)
+        else:
+            os.makedirs(path, exist_ok = True)
+        
+    except OSError as error:
+        print("Directory can not be created: ", error)
+    
+    
+    # ============= Create subfolder =============
+    
+    # TESS
+    sub_path = path+'\\TESS'
+    os.makedirs(sub_path, exist_ok = True)
+    # KEPLER
+    sub_path = path+'\\KEPLER'
+    os.makedirs(sub_path, exist_ok = True)
+    # K2
+    sub_path = path+'\\K2'
+    os.makedirs(sub_path, exist_ok = True)
+    
+    print("Directory created successfully")
+    
+
 download_all_datasets()
