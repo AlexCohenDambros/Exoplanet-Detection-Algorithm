@@ -93,14 +93,14 @@ def download_all_datasets():
     create_datasets()
     
     # ============= get path to download =============
-    get_current_path = os.getcwd() + "\\Datasets2"
+    get_current_path = os.getcwd() + "\\Datasets"
 
     # ============= URL =============
     urlTESS = 'https://exoplanetarchive.ipac.caltech.edu/cgi-bin/TblView/nph-tblView?app=ExoTbls&config=TOI'
     urlKEPLER = 'https://exoplanetarchive.ipac.caltech.edu/cgi-bin/TblView/nph-tblView?app=ExoTbls&config=cumulative'
     urlK2 = 'https://exoplanetarchive.ipac.caltech.edu/cgi-bin/TblView/nph-tblView?app=ExoTbls&config=k2pandc'
 
-    list_urls = {"TESS": urlTESS, "KEPLER": urlKEPLER, "K2": urlK2} 
+    list_urls = {"TESS": urlTESS, "KEPLER": urlKEPLER, "K2": urlK2 }
     
     # ============= Passing through all URLs =============
     for telescope, url in list_urls.items():
@@ -109,6 +109,8 @@ def download_all_datasets():
             
             # ============= Options =============
             chrome_options = Options()
+            chrome_options.add_argument("--headless")
+            
             old_latest_file = get_current_path
             
             # ============= Directory =============
@@ -127,13 +129,37 @@ def download_all_datasets():
             time.sleep(5)
     
             driver.execute_script(
-                "document.baixar = () => [...document.querySelectorAll(`div`)].filter(a => a.textContent.includes(`Download Table`)).filter(a => a.className.includes(`sub_item_text`))[0].parentElement.click()")    
-            driver.execute_script("document.baixar()")
+                """
+                
+                ;(async () => {
+                [...document.querySelectorAll(`div`)]
+                .filter(a => a.textContent === `Download All Columns`)
+                .filter(a => a.className.includes(`sub_item_text`))[0]
+                .parentElement.click() 
+
+                await new Promise(r => setTimeout(r, 1000));
+
+                [...document.querySelectorAll(`div`)]
+                .filter(a => a.textContent === `Download All Rows`)
+                .filter(a => a.className.includes(`sub_item_text`))[0]
+                .parentElement.click() 
+
+                await new Promise(r => setTimeout(r, 1000));
+
+                [...document.querySelectorAll(`div`)]
+                .filter(a => a.textContent === `Download Table`)
+                .filter(a => a.className.includes(`sub_item_text`))[0]
+                .parentElement.click()   
+                })();
+                
+                """)    
+            
+            time.sleep(3)
 
             # Espera o download ser realizado para continuar
             t = 0
             while(t < 600):
-                time.sleep(1)
+                time.sleep(3)
                 list_of_files = glob.glob(get_current_path + f"\\{telescope}\\*.crdownload")
                 new_latest_file = max(list_of_files, key=os.path.getctime) # Pega o ultimo arquivo baixado
                 
@@ -145,6 +171,8 @@ def download_all_datasets():
             time.sleep(15)
             driver.close()
             driver.quit()
+            
+            print(f"Downloaded data from the telescope: {telescope}")
 
         except Exception as error:
             print(error)
@@ -155,7 +183,7 @@ def create_datasets():
     get_current_path = os.getcwd()
 
     # Path
-    path = os.path.join(get_current_path, 'Datasets2')
+    path = os.path.join(get_current_path, 'Datasets')
     
     # ============= Create the directory =============
     try:
