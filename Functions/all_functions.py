@@ -19,19 +19,13 @@ K2: https://exoplanetarchive.ipac.caltech.edu/cgi-bin/TblView/nph-tblView?app=Ex
 from io import StringIO
 import pandas as pd
 import numpy as np
-import lightkurve as lk
 from selenium import webdriver
-from datetime import datetime
 from selenium.webdriver.chrome.options import Options
-import warnings
 import time
 import glob
 import os
 import shutil
-
-
-# ============= RandomState =============
-random_state = np.random.RandomState(123)
+import warnings
 
 
 # ============= Warnings =============
@@ -156,7 +150,7 @@ def download_all_datasets():
             
             time.sleep(3)
 
-            # Espera o download ser realizado para continuar
+            # Wait for the download to complete to continue
             t = 0
             while(t < 600):
                 time.sleep(3)
@@ -210,6 +204,3 @@ def create_datasets():
     os.makedirs(sub_path, exist_ok = True)
     
     print("Directory created successfully")
-    
-
-download_all_datasets()
