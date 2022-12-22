@@ -21,12 +21,12 @@ numpy.random.seed(seed=0)  # reproducibility
 warnings.filterwarnings('ignore')
 pp = pprint.PrettyPrinter(indent=4)
 
-columnTic = pd.read_csv(
-    "hlsp_tess-data-alerts_tess_phot_alert-summary-s01+s02+s03+s04_tess_v9_spoc.csv")
+# columnTic = pd.read_csv(
+#     "hlsp_tess-data-alerts_tess_phot_alert-summary-s01+s02+s03+s04_tess_v9_spoc.csv")
 
-target = columnTic["#tic_id"].unique()  # observation target
-listTarget = [target]
-parameters = itertools.product(*listTarget)
+# target = columnTic["#tic_id"].unique()  # observation target
+# listTarget = [target]
+# parameters = itertools.product(*listTarget)
 
 
 # Function for plotting the results
@@ -187,26 +187,26 @@ start_time = time.time()
 
 if __name__ == '__main__':
 
-    for value in parameters:
+    # for value in parameters:
 
-        try:
-            # {value[0]} / TIC 183979262 / TIC 55652896 / Kepler-17 quarter = 10
-            # In this list, each line represents a different observation period
-            allCurve = lk.search_lightcurve(
-                "TIC 55652896", author="SPOC", sector=[3, 4, 5])
-            pp.pprint(allCurve)
+    try:
+        # {value[0]} / TIC 183979262 / TIC 55652896 / Kepler-17 quarter = 10
+        # In this list, each line represents a different observation period
+        allCurve = lk.search_lightcurve(
+            "TIC 55652896", mission="TESS", sector = [3,4,5])
+        pp.pprint(allCurve)
 
-            # download data from all sectors
-            allObservationSectors = allCurve.download_all()
-            print("\n", allObservationSectors)
+        # download data from all sectors
+        allObservationSectors = allCurve.download_all()
+        print("\n", allObservationSectors)
 
-            # method TLS
-            dataFrame = methodTLS(allObservationSectors)
+        # method TLS
+        dataFrame = methodTLS(allObservationSectors)
 
-        except Exception as error:
-            print(error)
+    except Exception as error:
+        print(error)
 
-        break
+        # break
 
     t = time.time() - start_time
     print('\nTime used to process light curves: %f seconds\n' % t)

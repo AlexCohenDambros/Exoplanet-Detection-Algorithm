@@ -1,4 +1,3 @@
-# coding = utf-8
 # Author: Alex Cohen Dambrós Lopes
 
 """
@@ -38,7 +37,7 @@ def read_dataset(telescope_name=None):
     telescopes = ['tess', 'k2', 'kepler']
 
     if telescope_name is None:
-        raise TypeError(
+        raise ValueError(
             "read_dataset() missing 1 required positional argument: 'telescope_name'")
 
     elif telescope_name in telescopes:
