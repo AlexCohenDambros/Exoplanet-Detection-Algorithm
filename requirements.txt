@@ -1,0 +1,8 @@
+pandas
+numpy==1.22.0
+lightkurve==2.3.0
+bs4
+requests
+selenium
+astroquery==0.4.6  
+astropy==5.0
