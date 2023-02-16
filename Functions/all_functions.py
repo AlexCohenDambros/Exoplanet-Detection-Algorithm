@@ -4,13 +4,10 @@
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 All functions created and used in the project
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
 Links to get the data: 
-
 KEPLER: https://exoplanetarchive.ipac.caltech.edu/cgi-bin/TblView/nph-tblView?app=ExoTbls&config=cumulative
 TESS: https://exoplanetarchive.ipac.caltech.edu/cgi-bin/TblView/nph-tblView?app=ExoTbls&config=TOI
 K2: https://exoplanetarchive.ipac.caltech.edu/cgi-bin/TblView/nph-tblView?app=ExoTbls&config=k2pandc
-
 """
 
 
@@ -77,7 +74,6 @@ def download_all_datasets():
         =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
         Bot created using web spring to automatically download data from NASA
         =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
         This algorithm automatically selects and downloads data from the K2, KEPLER, and TESS space 
         telescopes from the NASA Exoplanet Archive website.
     """
@@ -129,16 +125,12 @@ def download_all_datasets():
                 .filter(a => a.textContent === `Download All Columns`)
                 .filter(a => a.className.includes(`sub_item_text`))[0]
                 .parentElement.click() 
-
                 await new Promise(r => setTimeout(r, 1000));
-
                 [...document.querySelectorAll(`div`)]
                 .filter(a => a.textContent === `Download All Rows`)
                 .filter(a => a.className.includes(`sub_item_text`))[0]
                 .parentElement.click() 
-
                 await new Promise(r => setTimeout(r, 1000));
-
                 [...document.querySelectorAll(`div`)]
                 .filter(a => a.textContent === `Download Table`)
                 .filter(a => a.className.includes(`sub_item_text`))[0]
@@ -151,9 +143,9 @@ def download_all_datasets():
 
             # Wait for the download to complete to continue
             t = 0
-            while(t < 600):
+            while(t < 1000):
                 time.sleep(3)
-                list_of_files = glob.glob(get_current_path + f"\\{telescope}\\*.crdownload")
+                list_of_files = glob.glob(get_current_path + f"\\{telescope}\\*.csv")
                 new_latest_file = max(list_of_files, key=os.path.getctime) # Pega o ultimo arquivo baixado
                 
                 if os.path.isfile(new_latest_file):
