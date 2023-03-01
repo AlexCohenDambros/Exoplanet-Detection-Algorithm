@@ -7,24 +7,52 @@
 '''
 
 # ============= Imports =============
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 from scipy import stats
 
 import warnings
 from warnings import simplefilter
 
-from sklearn.model_selection import GridSearchCV
+import xgboost as xgb
+from sklearn import metrics
 from sklearn.svm import SVC
-from sklearn import metrics 
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import train_test_split
 
 
 # ============= Warnings =============
+
 warnings.simplefilter("ignore")
 simplefilter(action='ignore', category=FutureWarning)
 
 
+# ============= Read Databases =============
+
+local_view = pd.read_csv("Preprocessed\preprocessed_local_view.csv", sep=",")
+global_view = pd.read_csv("Preprocessed\preprocessed_global_view.csv", sep=",")
+
+local_view.drop(["Unnamed: 0"], axis= 1, inplace= True)
+global_view.drop(["Unnamed: 0"], axis= 1, inplace= True)
+
+# ============= Separating into X and y =============
+
+X_local = local_view.iloc[:,:-1]
+X_global = global_view.iloc[:,:-1]
+
+y_local = local_view['label']
+y_global = global_view['label']
+
+# ============= Separating into training and testing =============
+
+# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.3, random_state=42, stratify=y)
+
+
 # ============= General Functions =============
+
 def compute_ks(y_test, y_pred_proba):
     """
     Description:
@@ -46,40 +74,85 @@ def compute_ks(y_test, y_pred_proba):
             negatives.append(b)
         else:
             positives.append(b)
-            
+
     ks = 100.0 * stats.ks_2samp(positives, negatives)[0]
     return ks
 
-# ============= All parameters =============
-parameters_svm = [
-    {'C': [1, 5, 10, 100, 200], 'kernel': ['linear'],
-     'C': [1, 5, 10, 50, 100, 200], 'kernel': ['poly'],
-     'C': [1, 5, 10, 100, 150, 500], 'gamma': [0.1, 0.01, 0.001, 0.0001, 'scale'], 'kernel':['rbf']
-     },
-]
+
+# ============= All models and parameters =============
+
+models_and_parameters = {
+    'SVM': {
+        'clf': SVC(probability=True, random_state=42),
+        'parameters': {
+            'C': [1, 3, 5, 10, 100, 200],
+            'kernel': ['linear', 'rbf', 'poly'],
+            'gamma': [0.1, 0.01, 0.001, 0.0001, 'scale'],
+            'tol': [1e-3, 1e-4]
+        },
+    },
+
+    'XGBClassifier': {
+        'clf': xgb.XGBClassifier(objective="binary:logistic", random_state=42),
+        'parameters': {
+            'max_depth': range (2, 10, 1),
+            'n_estimators': range(60, 220, 40),
+            'learning_rate': [0.1, 0.01, 0.05],
+            "min_child_weight":[1, 5]
+        },
+    },
+
+    'AdaBoostClassifier': {
+        'clf': AdaBoostClassifier(n_estimators=100, random_state=42),
+        'parameters': {
+            'n_estimators': range(60, 220, 40)
+        },
+    },
+
+}
 
 # ============= Classifier Functions =============
-def classifier_svm(parameters, X_train, y_train, X_test, y_test):
-    
-    clf = SVC(probability=True, random_state=42)
-    clf = GridSearchCV(clf, parameters, scoring='accuracy', n_jobs=-1)
-    
-    clf = clf.fit(X_train, y_train)
-    
-    y_pred = clf.predict(X_test)
-    
-    # Precision
-    print("\nPrecision: %.2f" % (metrics.precision_score(y_test, y_pred, average='weighted') * 100))
-    # Recall
-    print("Recall: %.2f" % (metrics.recall_score(y_test, y_pred, average='weighted') * 100))
-    # Accuracy
-    print("Accuracy: %.2f" % (metrics.accuracy_score(y_test, y_pred) * 100))
-    # F1
-    print("F1: %.2f" % (metrics.f1_score(y_test, y_pred, average='weighted') * 100))
-    # KS
-    print("KS: %.2f" % (compute_ks(y_test, clf.predict_proba(X_test)[:,1])))
-    
-    
-    
-    
 
+def classifier_function(clf, parameters, cv, X_train, y_train, X_test, y_test):
+
+    clf = GridSearchCV(clf, parameters, cv=cv, scoring='accuracy', n_jobs=-1)
+
+    clf = clf.fit(X_train, y_train)
+
+    y_pred = clf.predict(X_test)
+
+    # Precision
+    precision = metrics.precision_score(y_test, y_pred, average='weighted') * 100
+    print("\nPrecision: %.2f" % (precision))
+    # Recall
+    recall = metrics.recall_score(y_test, y_pred, average='weighted') * 100
+    print("Recall: %.2f" % (recall))
+    # Accuracy
+    acc = metrics.accuracy_score(y_test, y_pred) * 100
+    print("Accuracy: %.2f" % (acc))
+    # F1
+    f1 = metrics.f1_score(y_test, y_pred, average='weighted') * 100
+    print("F1: %.2f" % (f1))
+    # KS
+    ks = compute_ks(y_test, clf.predict_proba(X_test)[:, 1])
+    print("KS: %.2f" % (ks))
+    
+    return precision, recall, acc, f1, ks
+
+
+# ============= Main =============
+results = {}
+cv = StratifiedKFold(10, random_state=1, shuffle=True)
+
+# Loops through all models within the dictionary, performs training and returns results
+for name, model in models_and_parameters.items():
+
+    precision, recall, acc, f1, ks = classifier_function(model['clf'], model['parameters'], cv, X_train, y_train, X_test, y_test)
+    
+    results[name] = {
+        'precision': precision,
+        'recall': recall,
+        'accuracy': acc,
+        'f1': f1,
+        'ks': ks
+    }
