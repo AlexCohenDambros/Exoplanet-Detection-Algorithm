@@ -35,20 +35,23 @@ simplefilter(action='ignore', category=FutureWarning)
 local_view = pd.read_csv("Preprocessed\preprocessed_local_view.csv", sep=",")
 global_view = pd.read_csv("Preprocessed\preprocessed_global_view.csv", sep=",")
 
-local_view.drop(["Unnamed: 0"], axis= 1, inplace= True)
-global_view.drop(["Unnamed: 0"], axis= 1, inplace= True)
+local_view.drop(["Unnamed: 0"], axis=1, inplace=True)
+global_view.drop(["Unnamed: 0"], axis=1, inplace=True)
 
 # ============= Separating into X and y =============
 
-X_local = local_view.iloc[:,:-1]
-X_global = global_view.iloc[:,:-1]
+X_local = local_view.iloc[:, :-1]
+X_global = global_view.iloc[:, :-1]
 
 y_local = local_view['label']
 y_global = global_view['label']
 
 # ============= Separating into training and testing =============
 
-# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.3, random_state=42, stratify=y)
+X_train_local, X_test_local, y_train_local, y_test_local = train_test_split(
+    X_local, y_local, test_size=.3, random_state=42, stratify=y_local)
+X_train_global, X_test_global, y_train_global, y_test_global = train_test_split(
+    X_global, y_global, test_size=.3, random_state=42, stratify=y_global)
 
 
 # ============= General Functions =============
@@ -95,10 +98,10 @@ models_and_parameters = {
     'XGBClassifier': {
         'clf': xgb.XGBClassifier(objective="binary:logistic", random_state=42),
         'parameters': {
-            'max_depth': range (2, 10, 1),
+            'max_depth': range(2, 10, 1),
             'n_estimators': range(60, 220, 40),
             'learning_rate': [0.1, 0.01, 0.05],
-            "min_child_weight":[1, 5]
+            "min_child_weight": [1, 5]
         },
     },
 
@@ -113,6 +116,7 @@ models_and_parameters = {
 
 # ============= Classifier Functions =============
 
+
 def classifier_function(clf, parameters, cv, X_train, y_train, X_test, y_test):
 
     clf = GridSearchCV(clf, parameters, cv=cv, scoring='accuracy', n_jobs=-1)
@@ -122,7 +126,8 @@ def classifier_function(clf, parameters, cv, X_train, y_train, X_test, y_test):
     y_pred = clf.predict(X_test)
 
     # Precision
-    precision = metrics.precision_score(y_test, y_pred, average='weighted') * 100
+    precision = metrics.precision_score(
+        y_test, y_pred, average='weighted') * 100
     print("\nPrecision: %.2f" % (precision))
     # Recall
     recall = metrics.recall_score(y_test, y_pred, average='weighted') * 100
@@ -136,23 +141,34 @@ def classifier_function(clf, parameters, cv, X_train, y_train, X_test, y_test):
     # KS
     ks = compute_ks(y_test, clf.predict_proba(X_test)[:, 1])
     print("KS: %.2f" % (ks))
-    
+
     return precision, recall, acc, f1, ks
 
 
 # ============= Main =============
-results = {}
+results_local = {}
+results_global = {}
 cv = StratifiedKFold(10, random_state=1, shuffle=True)
 
 # Loops through all models within the dictionary, performs training and returns results
 for name, model in models_and_parameters.items():
 
-    precision, recall, acc, f1, ks = classifier_function(model['clf'], model['parameters'], cv, X_train, y_train, X_test, y_test)
-    
-    results[name] = {
-        'precision': precision,
-        'recall': recall,
-        'accuracy': acc,
-        'f1': f1,
-        'ks': ks
+    precision_local, recall_local, acc_local, f1_local, ks_local = classifier_function(
+        model['clf'], model['parameters'], cv, X_train_local, y_train_local, X_test_local, y_test_local)
+    precision_global, recall_global, acc_global, f1_global, ks_global = classifier_function(
+        model['clf'], model['parameters'], cv, X_train_global, y_train_global, X_test_global, y_test_global)
+
+    results_local[name] = {
+        'precision': precision_local,
+        'recall': recall_local,
+        'accuracy': acc_local,
+        'f1': f1_local,
+        'ks': ks_local
+    }
+    results_global[name] = {
+        'precision': precision_global,
+        'recall': recall_global,
+        'accuracy': acc_global,
+        'f1': f1_global,
+        'ks': ks_global
     }
