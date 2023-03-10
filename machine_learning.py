@@ -8,6 +8,9 @@
 
 # ============= Imports =============
 
+import os
+import shutil
+import joblib
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -106,7 +109,7 @@ models_and_parameters = {
     },
 
     'AdaBoostClassifier': {
-        'clf': AdaBoostClassifier(n_estimators=100, random_state=42),
+        'clf': AdaBoostClassifier(random_state=42),
         'parameters': {
             'n_estimators': range(60, 220, 40)
         },
@@ -116,8 +119,7 @@ models_and_parameters = {
 
 # ============= Classifier Functions =============
 
-
-def classifier_function(clf, parameters, cv, X_train, y_train, X_test, y_test):
+def classifier_function(name_model, clf, parameters, cv, X_train, y_train, X_test, y_test):
 
     clf = GridSearchCV(clf, parameters, cv=cv, scoring='accuracy', n_jobs=-1)
 
@@ -141,11 +143,33 @@ def classifier_function(clf, parameters, cv, X_train, y_train, X_test, y_test):
     # KS
     ks = compute_ks(y_test, clf.predict_proba(X_test)[:, 1])
     print("KS: %.2f" % (ks))
+    
+    # ============= Save Model =============
+    
+    get_current_path = os.getcwd()
+    
+    # Path
+    path = os.path.join(get_current_path, 'Saved_models')
+    
+    # Create the directory 
+    try:
+        if os.path.exists(path):
+            shutil.rmtree(path, ignore_errors=True)
+            os.makedirs(path, exist_ok = True)
+        else:
+            os.makedirs(path, exist_ok = True)
+        
+    except OSError as error:
+        print("Directory can not be created: ", error)
+    
+    # saving
+    joblib.dump(clf, f"./Saved_models/{name_model}.pk1")
 
     return precision, recall, acc, f1, ks
 
 
 # ============= Main =============
+
 results_local = {}
 results_global = {}
 cv = StratifiedKFold(10, random_state=1, shuffle=True)
@@ -154,9 +178,10 @@ cv = StratifiedKFold(10, random_state=1, shuffle=True)
 for name, model in models_and_parameters.items():
 
     precision_local, recall_local, acc_local, f1_local, ks_local = classifier_function(
-        model['clf'], model['parameters'], cv, X_train_local, y_train_local, X_test_local, y_test_local)
+        name + '_local', model['clf'], model['parameters'], cv, X_train_local, y_train_local, X_test_local, y_test_local)
+    
     precision_global, recall_global, acc_global, f1_global, ks_global = classifier_function(
-        model['clf'], model['parameters'], cv, X_train_global, y_train_global, X_test_global, y_test_global)
+        name + '_global', model['clf'], model['parameters'], cv, X_train_global, y_train_global, X_test_global, y_test_global)
 
     results_local[name] = {
         'precision': precision_local,
@@ -172,3 +197,7 @@ for name, model in models_and_parameters.items():
         'f1': f1_global,
         'ks': ks_global
     }
+
+# ============= Command to load a saved model =============
+
+# lr_model = joblib.load('./Saved_models/model.pk1')

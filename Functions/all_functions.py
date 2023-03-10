@@ -12,16 +12,17 @@ K2: https://exoplanetarchive.ipac.caltech.edu/cgi-bin/TblView/nph-tblView?app=Ex
 
 
 # ============= Imports =============
-from io import StringIO
-import pandas as pd
-import numpy as np
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+
+import os
 import time
 import glob
-import os
 import shutil
 import warnings
+import numpy as np
+import pandas as pd
+from io import StringIO
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 
 
 # ============= Warnings =============
