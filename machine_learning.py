@@ -60,6 +60,7 @@ y_global = global_view['label']
 
 X_train_local, X_test_local, y_train_local, y_test_local = train_test_split(
     X_local, y_local, test_size=.3, random_state=42, stratify=y_local)
+
 X_train_global, X_test_global, y_train_global, y_test_global = train_test_split(
     X_global, y_global, test_size=.3, random_state=42, stratify=y_global)
 
