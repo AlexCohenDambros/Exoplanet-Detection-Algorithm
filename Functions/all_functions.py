@@ -32,37 +32,28 @@ warnings.simplefilter("ignore")
 # ============= Read Datasets =============
 def read_dataset(telescope_name=None):
 
-    telescopes = ['tess', 'k2', 'kepler']
+    telescopes = ['TESS', 'K2', 'KEPLER']
 
     if telescope_name is None:
-        raise ValueError(
-            "read_dataset() missing 1 required positional argument: 'telescope_name'")
+        raise ValueError("read_dataset() missing 1 required positional argument: 'telescope_name'")
+        
+    if telescope_name.upper() not in telescopes:
+        raise ValueError(f"Invalid telescope name. It must be one of the following: {', '.join(telescopes)}")
 
-    elif telescope_name in telescopes:
+    telescope_path = f'Datasets/{telescope_name.upper()}/*.csv'
+    telescope_csv_paths = glob.glob(telescope_path)
 
-        if telescope_name == 'tess':
-            telescope_path = 'Datasets\TESS'
-
-        elif telescope_name == 'k2':
-            telescope_path = 'Datasets\K2'
-
-        elif telescope_name == 'kepler':
-            telescope_path = 'Datasets\KEPLER'
-
-    else:
-        raise ValueError(
-            f"The argument telescope_name does not have the telescope data: '{telescope_name}'")
-
-    telescope_path = glob.glob(telescope_path+'\*.csv')
+    if not telescope_csv_paths:
+        raise ValueError(f"No CSV files found for telescope {telescope_name}")
 
     csv_data = ''
-    with open(telescope_path[0], 'r') as f:
+    with open(telescope_csv_paths[0], 'r') as f:
         csv_data = '\n'.join(
             list(filter(lambda a: not a.startswith('#'), f.readlines())))[1:]
 
     dataset = pd.read_csv(StringIO(csv_data), on_bad_lines='skip')
 
-    if telescope_name == 'tess':
+    if telescope_name.upper() == 'TESS':
         names_disp = {"FP": 'FALSE POSITIVE', "PC": 'CANDIDATE',
                       "CP": 'CONFIRMED', "FA": 'FALSE POSITIVE', "KP": 'CONFIRMED'}
         dataset.replace({'tfopwg_disp': names_disp}, inplace=True)

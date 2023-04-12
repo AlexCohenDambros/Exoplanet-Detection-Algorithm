@@ -21,38 +21,81 @@ from Functions import all_functions
 from multiprocessing import Process, Manager, Queue, freeze_support
 
 # ============= Functions =============
+def open_datasets(get_candidates=False):
+    """
+    Function used to filter all received data from received.
 
-def open_datasets():
+    Parameters:
+    -----------
+    get_candidates : bool, optional
+        If True, saves the candidate data as a CSV file in a new directory named 'Candidates'.
+
+    Returns:
+    --------
+    pandas.DataFrame
+    
+    - Dataframe containing candidate target data.
+    """
 
     # ============= Open Datasets =============
     df_tess = all_functions.read_dataset('tess')
     df_kepler = all_functions.read_dataset('kepler')
     df_k2 = all_functions.read_dataset('k2')
 
-    #  ============= Rename specific columns =============
-    df_tess.rename(columns={"tfopwg_disp": "disposition"}, inplace=True)
     df_kepler.rename(columns={"koi_disposition": "disposition"}, inplace=True)
 
     # drop rows of planets that were discovered by methods other than transit
     df_k2 = df_k2[df_k2['discoverymethod'] != 'Radial Velocity']
 
-    # Selecting specific columns for the first test
+    # Selecting specific columns
 
     # TESS
-    df_tess = df_tess[['tid', 'disposition', 'pl_orbper', 'pl_trandurh']]
-    df_tess.rename(columns={"tid": "id_target", "pl_orbper": "period",
+
+    df_tess.rename(columns={"tid": "id_target", 
+                            "tfopwg_disp": "disposition", 
+                            "pl_orbper": "period",
                             "pl_trandurh": "duration"}, inplace=True)
+    df_tess = df_tess[['id_target', 'disposition', 'period', 'duration']]
 
     # KEPLER
-    df_kepler = df_kepler[['kepid', 'disposition',
-                           'koi_period', 'koi_duration', 'koi_time0bk']]
-    df_kepler.rename(columns={"kepid": "id_target", "koi_period": "period",
+    df_kepler.rename(columns={"kepid": "id_target", 
+                              "koi_disposition": "disposition",
+                              "koi_period": "period",
                               "koi_duration": "duration"}, inplace=True)
+    df_kepler = df_kepler[['id_target', 'disposition', 'period', 'duration', 'koi_time0bk']]
 
     # K2
-    df_k2 = df_k2[['tic_id', 'disposition', 'pl_orbper', 'pl_trandur']]
-    df_k2.rename(columns={"tic_id": "id_target", "pl_orbper": "period",
+    df_k2.rename(columns={"tic_id": "id_target", 
+                          "pl_orbper": "period",
                           "pl_trandur": "duration"}, inplace=True)
+    
+    df_k2 = df_k2[['id_target', 'disposition', 'period', 'duration']]
+    
+    # ============= save candidate data =============
+    if get_candidates:
+        df_candidates_tess = df_tess[df_tess['disposition'] == "CANDIDATE"]
+        df_candidates_kepler = df_kepler[df_kepler['disposition'] == "CANDIDATE"]
+        df_candidates_k2 = df_k2[df_k2['disposition'] == "CANDIDATE"]
+
+        # ============= Create the directory =============
+        get_current_path = os.getcwd()
+
+        # Path
+        path = os.path.join(get_current_path, 'Candidates')
+
+        try:
+            if os.path.exists(path):
+                shutil.rmtree(path, ignore_errors=True)
+                os.makedirs(path, exist_ok=True)
+            else:
+                os.makedirs(path, exist_ok=True)
+
+        except OSError as error:
+            print("Directory can not be created: ", error)
+
+        df_candidates_tess.to_csv(path + '\\candidate_target_data_TESS.csv')
+        df_candidates_kepler.to_csv(path + '\\candidate_target_data_KEPLER.csv')
+        df_candidates_k2.to_csv(path + '\\candidate_target_data_K2.csv')
 
     # filtering the data by confirmed targets and false positives
     candidate_disposition = ['CONFIRMED', 'FALSE POSITIVE']
@@ -61,10 +104,13 @@ def open_datasets():
     df_kepler = df_kepler[df_kepler['disposition'].isin(candidate_disposition)]
     df_k2 = df_k2[df_k2['disposition'].isin(candidate_disposition)]
 
+    
+
     return df_tess, df_kepler, df_k2
 
+
 def saving_preprocessed_data(local_curves, global_curves, local_global_target):
-    
+
     df_local = pd.DataFrame(local_curves)
     df_global = pd.DataFrame(global_curves)
 
@@ -93,7 +139,9 @@ def saving_preprocessed_data(local_curves, global_curves, local_global_target):
     df_global.to_csv(path + '\\preprocessed_local_view.csv')
     df_local.to_csv(path + '\\preprocessed_global_view.csv')
 
+
 def process_target(name_telescope, row):
+
     id_target = row[0]
     period = row[2]
     duration = row[3]
@@ -169,8 +217,9 @@ def process_target(name_telescope, row):
         print(f"Failed at id: {id_target} | Error: {error}")
         return -1
 
+
 def process_threads(processinQqueue, answerQueue, finishedTheLines, name_telescope):
-    
+
     while True:
         try:
             row = processinQqueue.get(timeout=0.01)
@@ -194,78 +243,79 @@ def process_threads(processinQqueue, answerQueue, finishedTheLines, name_telesco
 
     answerQueue.put_nowait("ts")
 
+
 if __name__ == '__main__':
     num_threads = multiprocessing.cpu_count()
+
+    # start_time = time.time()
+
+    df_tess, df_kepler, df_k2 = open_datasets(get_candidates= True)
     
-    start_time = time.time()
-
-    df_tess, df_kepler, df_k2 = open_datasets()
-
     # telescopes_list = {'Kepler': df_kepler, 'TESS': df_tess}
 
-    # TEST
-    telescopes_list = {'Kepler': df_kepler.sample(10)}
+    # # TEST
+    # telescopes_list = {'Kepler': df_kepler.sample(10)}
 
-    # ============= Execution of threads for data pre-processing ============= 
-    local_curves = []
-    global_curves = []
-    local_global_target = []
+    # # ============= Execution of threads for data pre-processing =============
+    # local_curves = []
+    # global_curves = []
+    # local_global_target = []
 
-    for name_telescope, df_telescope in telescopes_list.items():
+    # for name_telescope, df_telescope in telescopes_list.items():
 
-        # Manager
-        manager = Manager()
+    #     # Manager
+    #     manager = Manager()
 
-        # Flare gun
-        finishedTheLines = manager.Event()
+    #     # Flare gun
+    #     finishedTheLines = manager.Event()
 
-        # Processing Queues
-        processinQqueue = Queue(df_telescope.shape[0])
-        answerQueue = Queue(df_telescope.shape[0] + num_threads)
+    #     # Processing Queues
+    #     processinQqueue = Queue(df_telescope.shape[0])
+    #     answerQueue = Queue(df_telescope.shape[0] + num_threads)
 
-        threads = []
+    #     threads = []
 
-        for i in range(num_threads):
-            threads.append(Process(target=process_threads, args=(
-                processinQqueue, answerQueue, finishedTheLines, name_telescope)))
-            threads[-1].start()
+    #     for i in range(num_threads):
+    #         threads.append(Process(target=process_threads, args=(
+    #             processinQqueue, answerQueue, finishedTheLines, name_telescope)))
+    #         threads[-1].start()
 
-        for _, row in df_telescope.iterrows():
-            processinQqueue.put_nowait(row)
+    #     for _, row in df_telescope.iterrows():
+    #         processinQqueue.put_nowait(row)
 
-        time.sleep(1)
-        finishedTheLines.set()
+    #     time.sleep(1)
+    #     finishedTheLines.set()
 
-        threads_finished = 0
-        while threads_finished < num_threads:
-            try:
-                get_result = answerQueue.get(False)
-                if get_result == "ts":
-                    threads_finished += 1
-                    continue
-                
-                # Finish processing the data
-                (target, data_local, data_global) = get_result
-                local_global_target.append(target)
-                local_curves.append(data_local)
-                global_curves.append(data_global)
-                
-            except queue.Empty:
-                continue
+    #     threads_finished = 0
+    #     while threads_finished < num_threads:
+    #         try:
+    #             get_result = answerQueue.get(False)
+    #             if get_result == "ts":
+    #                 threads_finished += 1
+    #                 continue
 
-        for t in threads:
-            t.join()
+    #             # Finish processing the data
+    #             (target, data_local, data_global) = get_result
+    #             local_global_target.append(target)
+    #             local_curves.append(data_local)
+    #             global_curves.append(data_global)
 
-    # marks the end of the runtime
-    end_time = time.time()
+    #         except queue.Empty:
+    #             continue
 
-    # Calculates execution time in seconds
-    execution_time = end_time - start_time
-    
-    print(f"Runtime: {execution_time:.2f} seconds")
+    #     for t in threads:
+    #         t.join()
 
-    # Calls the function to save the preprocessed data locally
-    saving_preprocessed_data(local_curves, global_curves, local_global_target)
+    # # marks the end of the runtime
+    # end_time = time.time()
+
+    # # Calculates execution time in seconds
+    # execution_time = end_time - start_time
+
+    # print(f"Runtime: {execution_time:.2f} seconds")
+
+    # # Calls the function to save the preprocessed data locally
+    # saving_preprocessed_data(local_curves, global_curves, local_global_target)
 
 
 """
