@@ -42,12 +42,10 @@ def open_datasets(get_candidates=False):
     df_kepler = all_functions.read_dataset('kepler')
     df_k2 = all_functions.read_dataset('k2')
 
-    df_kepler.rename(columns={"koi_disposition": "disposition"}, inplace=True)
-
     # drop rows of planets that were discovered by methods other than transit
     df_k2 = df_k2[df_k2['discoverymethod'] != 'Radial Velocity']
 
-    # Selecting specific columns
+    # ============= Selecting specific columns =============
 
     # TESS
 
@@ -71,7 +69,7 @@ def open_datasets(get_candidates=False):
     
     df_k2 = df_k2[['id_target', 'disposition', 'period', 'duration']]
     
-    # ============= save candidate data =============
+    # ============= Save candidate data =============
     if get_candidates:
         df_candidates_tess = df_tess[df_tess['disposition'] == "CANDIDATE"]
         df_candidates_kepler = df_kepler[df_kepler['disposition'] == "CANDIDATE"]
@@ -117,7 +115,6 @@ def saving_preprocessed_data(local_curves, global_curves, local_global_target):
         The function creates a directory called "Preprocessed" in the current directory and saves the preprocessed data in CSV files in that directory.
 
     Parameters:
-
         local_curves: list of local curves.
         global_curves: list of global curves.
         local_global_target: label for the pre-processed data.

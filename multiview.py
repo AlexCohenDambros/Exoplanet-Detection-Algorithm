@@ -8,75 +8,72 @@
 
 # ============= Imports =============
 import os
-from pathlib import Path
 import joblib
+from flask import abort
+from pathlib import Path
 
-models_loaded = {}
 
-def loading_models(models, models_names):
+# ============= General Functions =============
+
+def loading_models(model_path):
 
     """
     Description:
         Function used to load models saved on disk.
 
     Parameters:
-        models : list
-            List of saved template paths.
-        models_names: list
-            List with the names of the saved models.
+        model_name : string
+            Path to load model.
 
     Return:
-        None.
+        Return loaded model or error.
     """
     
-    if not isinstance(models, list):
-        raise ValueError("models must be a list of strings")
-    
-    if not isinstance(models_names, list):
-        raise ValueError("models_names must be a list of strings")
-    
-    if len(models) != len(models_names):
-        raise ValueError("models and models_names must have the same length")
-    
-    for model in models:
-        if not isinstance(model, str):
-            raise ValueError("models must be a list of strings")
-    
-    for model_name in models_names:
-        if not isinstance(model_name, str):
-            raise ValueError("models_names must be a list of strings")
+    if not model_path or not isinstance(model_path, str):
+        abort(500, "Invalid input. Model name must be a non-empty string.")
 
     # ============= Command to load a saved model =============
-    if len(models) != len(models_names):
-        print("Error: Lists are not the same size!")
-    else:
-        for i in range(len(models)):
-            models_loaded[models_names[i]] = joblib.load(models[i])
+    try:
+        return joblib.load(model_path)
+    except FileNotFoundError:
+        abort(404, "Model not found.")
+        
+        
+def multiview(model_name_multiview):
+    
+    """
+    Description:
+        Function used to load models in multiview.
 
-if __name__ == '__main__':
+    Parameters:
+        model_name_multiview : string
+            Name of the model you want to multiview.
+
+    Return: dict
+        Returns a dictionary containing the loaded models.
+    """
+    
+    models_loaded = {}
 
     path = Path.cwd() / "Saved_models"
 
-    
     if os.path.exists(path):
         for subdir, _, files in os.walk(path):
-            all_files_path = []
-            all_file_names = []
-            
-            if len(files) == 0:
+            if len(files) == 0 or os.path.basename(subdir) != model_name_multiview:
                 continue
             
             for file in files:
                 file_path = os.path.join(subdir, file)
-                all_files_path.append(file_path)
                 
                 file_name_parts = file.rsplit(".", 1)
                 file_name = file_name_parts[0]
-                all_file_names.append(file_name)
-
-            loading_models(all_files_path, all_file_names)
+                
+                models_loaded[file_name] = loading_models(file_path)
+                
+        if models_loaded:
+            return models_loaded
+        else:
+            abort(500, "Bad request")
             
     else:
-        print("Folder not found")
-
-    print(models_loaded)
+        abort(404, "Folder not found.")

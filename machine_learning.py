@@ -35,7 +35,6 @@ simplefilter(action='ignore', category=FutureWarning)
 
 # ============= General Functions =============
 
-
 def save_model(clf, name_model, sufix):
     
     """
@@ -97,7 +96,6 @@ def compute_ks(y_test, y_pred_proba):
     return ks
 
 # ============= Classifier Function =============
-
 
 def classifier_function(name_model, sufix, clf, parameters, cv, X_train, y_train, X_test, y_test):
     
@@ -168,7 +166,6 @@ def classifier_function(name_model, sufix, clf, parameters, cv, X_train, y_train
     return precision, recall, acc, f1, auc, ks
 
 # ============= Saving the Results =============
-
 
 def saving_the_results(dict_result, sufix):
     
