@@ -311,6 +311,3 @@ if __name__ == '__main__':
 
     saving_the_results(results_local, "local")
     saving_the_results(results_global, "global")
-
-# ============= Command to load a saved model =============
-# lr_model = joblib.load('./Saved_models/model.pk1')
