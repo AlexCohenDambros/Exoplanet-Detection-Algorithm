@@ -21,20 +21,20 @@ from Functions import all_functions
 from multiprocessing import Process, Manager, Queue, freeze_support
 
 # ============= Functions =============
+
 def open_datasets(get_candidates=False):
+    
     """
-    Function used to filter all received data from received.
+    Description:
+        Function used to filter all received data from received.
 
     Parameters:
-    -----------
-    get_candidates : bool, optional
-        If True, saves the candidate data as a CSV file in a new directory named 'Candidates'.
+        get_candidates : bool, optional
+            If True, saves the candidate data as a CSV file in a new directory named 'Candidates'.
 
     Returns:
-    --------
-    pandas.DataFrame
-    
-    - Dataframe containing candidate target data.
+        pandas.DataFrame
+            Dataframe containing candidate target data.
     """
 
     # ============= Open Datasets =============
@@ -104,12 +104,27 @@ def open_datasets(get_candidates=False):
     df_kepler = df_kepler[df_kepler['disposition'].isin(candidate_disposition)]
     df_k2 = df_k2[df_k2['disposition'].isin(candidate_disposition)]
 
-    
-
     return df_tess, df_kepler, df_k2
 
 
 def saving_preprocessed_data(local_curves, global_curves, local_global_target):
+    
+    """
+    Description:
+        This function in Python aims to save the pre-processed data in CSV files. 
+        The function takes three parameters: local_curves, global_curves and local_global_target. 
+        The first two are the local and global curves and the last one is the label for the pre-processed data. 
+        The function creates a directory called "Preprocessed" in the current directory and saves the preprocessed data in CSV files in that directory.
+
+    Parameters:
+
+        local_curves: list of local curves.
+        global_curves: list of global curves.
+        local_global_target: label for the pre-processed data.
+        
+    Return:
+        None.
+    """
 
     df_local = pd.DataFrame(local_curves)
     df_global = pd.DataFrame(global_curves)
@@ -136,11 +151,24 @@ def saving_preprocessed_data(local_curves, global_curves, local_global_target):
     except OSError as error:
         print("Directory can not be created: ", error)
 
-    df_global.to_csv(path + '\\preprocessed_local_view.csv')
-    df_local.to_csv(path + '\\preprocessed_global_view.csv')
+    df_local.to_csv(path + '\\preprocessed_local_view.csv')
+    df_global.to_csv(path + '\\preprocessed_global_view.csv')
 
 
 def process_target(name_telescope, row):
+    
+    """
+    Description:
+       This function is used to download and pre-process the target data passed as a parameter. Data can be downloaded from TESS, K2 and KEPLER telescopes
+
+    Parameters:
+        name_telescope: telescope name.
+        row: row containing telescope data.
+        
+    Return:
+        lc_local.flux.value and lc_global.flux.value
+        Error = -1
+    """
 
     id_target = row[0]
     period = row[2]
@@ -219,7 +247,21 @@ def process_target(name_telescope, row):
 
 
 def process_threads(processinQqueue, answerQueue, finishedTheLines, name_telescope):
+    
+    """
+    Description:
+        This function processes queue data in Multithreading.
 
+    Parameters:
+        - processinQqueue: Input queue containing the data to be processed.
+        - answerQueue: Output queue that receives the processing results.
+        - finishTheLines: Flag indicating whether all lines were processed.
+        - name_telescope: Accepted name.
+
+    Return:
+        None.
+    """
+    
     while True:
         try:
             row = processinQqueue.get(timeout=0.01)
@@ -245,77 +287,78 @@ def process_threads(processinQqueue, answerQueue, finishedTheLines, name_telesco
 
 
 if __name__ == '__main__':
+    
     num_threads = multiprocessing.cpu_count()
 
-    # start_time = time.time()
+    start_time = time.time()
 
     df_tess, df_kepler, df_k2 = open_datasets(get_candidates= True)
     
     # telescopes_list = {'Kepler': df_kepler, 'TESS': df_tess}
 
-    # # TEST
-    # telescopes_list = {'Kepler': df_kepler.sample(10)}
+    # TEST
+    telescopes_list = {'Kepler': df_kepler.sample(10)}
 
-    # # ============= Execution of threads for data pre-processing =============
-    # local_curves = []
-    # global_curves = []
-    # local_global_target = []
+    # ============= Execution of threads for data pre-processing =============
+    local_curves = []
+    global_curves = []
+    local_global_target = []
 
-    # for name_telescope, df_telescope in telescopes_list.items():
+    for name_telescope, df_telescope in telescopes_list.items():
 
-    #     # Manager
-    #     manager = Manager()
+        # Manager
+        manager = Manager()
 
-    #     # Flare gun
-    #     finishedTheLines = manager.Event()
+        # Flare gun
+        finishedTheLines = manager.Event()
 
-    #     # Processing Queues
-    #     processinQqueue = Queue(df_telescope.shape[0])
-    #     answerQueue = Queue(df_telescope.shape[0] + num_threads)
+        # Processing Queues
+        processinQqueue = Queue(df_telescope.shape[0])
+        answerQueue = Queue(df_telescope.shape[0] + num_threads)
 
-    #     threads = []
+        threads = []
 
-    #     for i in range(num_threads):
-    #         threads.append(Process(target=process_threads, args=(
-    #             processinQqueue, answerQueue, finishedTheLines, name_telescope)))
-    #         threads[-1].start()
+        for i in range(num_threads):
+            threads.append(Process(target=process_threads, args=(
+                processinQqueue, answerQueue, finishedTheLines, name_telescope)))
+            threads[-1].start()
 
-    #     for _, row in df_telescope.iterrows():
-    #         processinQqueue.put_nowait(row)
+        for _, row in df_telescope.iterrows():
+            processinQqueue.put_nowait(row)
 
-    #     time.sleep(1)
-    #     finishedTheLines.set()
+        time.sleep(1)
+        finishedTheLines.set()
 
-    #     threads_finished = 0
-    #     while threads_finished < num_threads:
-    #         try:
-    #             get_result = answerQueue.get(False)
-    #             if get_result == "ts":
-    #                 threads_finished += 1
-    #                 continue
+        threads_finished = 0
+        while threads_finished < num_threads:
+            try:
+                get_result = answerQueue.get(False)
+                if get_result == "ts":
+                    threads_finished += 1
+                    continue
 
-    #             # Finish processing the data
-    #             (target, data_local, data_global) = get_result
-    #             local_global_target.append(target)
-    #             local_curves.append(data_local)
-    #             global_curves.append(data_global)
+                # Finish processing the data
+                (target, data_local, data_global) = get_result
+                local_global_target.append(target)
+                local_curves.append(data_local)
+                global_curves.append(data_global)
 
-    #         except queue.Empty:
-    #             continue
+            except queue.Empty:
+                continue
 
-    #     for t in threads:
-    #         t.join()
+        for t in threads:
+            t.join()
 
-    # # marks the end of the runtime
-    # end_time = time.time()
+    # marks the end of the runtime
+    end_time = time.time()
 
-    # # Calculates execution time in seconds
-    # execution_time = end_time - start_time
+    # Calculates execution time in seconds
+    execution_time = end_time - start_time
 
-    # print(f"Runtime: {execution_time:.2f} seconds")
+    print(f"Runtime: {execution_time:.2f} seconds")
 
-    # # Calls the function to save the preprocessed data locally
-    # saving_preprocessed_data(local_curves, global_curves, local_global_target)
+    # Calls the function to save the preprocessed data locally
+    saving_preprocessed_data(local_curves, global_curves, local_global_target)
 
 
 """
