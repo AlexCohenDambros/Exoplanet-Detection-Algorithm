@@ -7,73 +7,46 @@
 '''
 
 # ============= Imports =============
-import os
-import joblib
-from flask import abort
-from pathlib import Path
+
+import pandas as pd
+from General_Functions import load_saved_models
 
 
-# ============= General Functions =============
+# ============= Functions =============
 
-def loading_models(model_path):
-
-    """
-    Description:
-        Function used to load models saved on disk.
-
-    Parameters:
-        model_name : string
-            Path to load model.
-
-    Return:
-        Return loaded model or error.
-    """
+def multiview(model, mode, X_test_local, X_test_global):
     
-    if not model_path or not isinstance(model_path, str):
-        abort(500, "Invalid input. Model name must be a non-empty string.")
-
-    # ============= Command to load a saved model =============
-    try:
-        return joblib.load(model_path)
-    except FileNotFoundError:
-        abort(404, "Model not found.")
-        
-        
-def multiview(model_name_multiview):
+    # Checks if model is a string and not empty
+    if not isinstance(model, str):
+        raise TypeError('The model parameter must be a string')
+    elif not model.strip():
+        raise ValueError('The model parameter cannot be an empty string')
     
-    """
-    Description:
-        Function used to load models in multiview.
-
-    Parameters:
-        model_name_multiview : string
-            Name of the model you want to multiview.
-
-    Return: dict
-        Returns a dictionary containing the loaded models.
-    """
+    # Check if mode is one of two valid options
+    if mode not in ['Produto', 'Soma']:
+        raise ValueError('The mode parameter must be "Produto" or "Soma"')
     
-    models_loaded = {}
-
-    path = Path.cwd() / "Saved_models"
-
-    if os.path.exists(path):
-        for subdir, _, files in os.walk(path):
-            if len(files) == 0 or os.path.basename(subdir) != model_name_multiview:
-                continue
-            
-            for file in files:
-                file_path = os.path.join(subdir, file)
-                
-                file_name_parts = file.rsplit(".", 1)
-                file_name = file_name_parts[0]
-                
-                models_loaded[file_name] = loading_models(file_path)
-                
-        if models_loaded:
-            return models_loaded
-        else:
-            abort(500, "Bad request")
-            
+    # Check if X_test_local and X_test_global is not empty
+    if X_test_local is not None:
+        raise ValueError('X_test_local parameter cannot be empty')
+    if X_test_global is not None:
+        raise ValueError('X_test_global parameter cannot be empty')
+    
+    dict_multiview = load_saved_models.getting_models(model)
+    
+    # Separating the values ​​of each key into different variables
+    model_local = dict_multiview[[ch for ch in dict_multiview.keys() if ch.endswith("_local")][0]]
+    model_global = dict_multiview[[ch for ch in dict_multiview.keys() if ch.endswith("_global")][0]]
+    
+    local_prob = model_local.predict_proba(X_test_local)[:,1]
+    global_prob = model_global.predict_proba(X_test_global)[:,1]
+    
+    if mode == "Produto":
+        product_prob = local_prob * global_prob
+        predicted_proba_norm = product_prob / (local_prob + global_prob) # Normalize the results
     else:
-        abort(404, "Folder not found.")
+        sum_prob = local_prob + global_prob
+        predicted_proba_norm = sum_prob / (local_prob + global_prob) # Normalize the results
+    
+    if len(X_test_local) == predicted_proba_norm.shape[0] and len(X_test_global) == predicted_proba_norm.shape[0]:
+        return pd.DataFrame(data = {"Predicted Candidates": predicted_proba_norm})

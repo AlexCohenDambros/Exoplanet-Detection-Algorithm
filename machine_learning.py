@@ -163,6 +163,7 @@ def classifier_function(name_model, sufix, clf, parameters, cv, X_train, y_train
         print("Não foi possível calcular o KS.")
 
     # ============= Save Model =============
+    
     save_model(clf, name_model, sufix)
 
     return precision, recall, acc, f1, auc, ks, y_pred

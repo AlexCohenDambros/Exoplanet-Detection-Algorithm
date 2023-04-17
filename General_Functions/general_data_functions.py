@@ -26,10 +26,12 @@ from selenium.webdriver.chrome.options import Options
 
 
 # ============= Warnings =============
+
 warnings.simplefilter("ignore")
 
 
 # ============= Read Datasets =============
+
 def read_dataset(telescope_name=None):
 
     telescopes = ['TESS', 'K2', 'KEPLER']

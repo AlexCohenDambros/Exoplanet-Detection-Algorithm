@@ -9,18 +9,59 @@ This is an example code used to obtain light curves from space telescopes and pr
 '''
 
 # ============= Imports =============
+
 import os
-import time
+import glob
 import queue
 import shutil
 import numpy as np
 import pandas as pd
 import multiprocessing
 import lightkurve as lk
-from Functions import all_functions
+from General_Functions import general_data_functions
 from multiprocessing import Process, Manager, Queue, freeze_support
 
 # ============= Functions =============
+
+def open_candidates(candidate):
+    
+    "Kepler"
+    
+    """
+    Description:
+        Loads one or several .csv candidates into a pandas dataframe.
+    
+    Argumentos:
+        candidato -- Uma string representando o nome do arquivo .csv a ser carregado.
+    
+    Return:
+        A single pandas dataframe with the data loaded
+    """
+    
+    if isinstance(candidate, str):
+        candidate = candidate.upper()
+        if candidate not in ["K2", "KEPLER", "TESS"]:
+            raise ValueError("Candidate must be one of 'K2', 'KEPLER', or 'TESS'.")
+        
+        # Se candidates for uma string, carrega um único arquivo.
+        try:
+            candidate_path = f'Candidates/candidate_target_data_{candidate}.csv'
+            candidates_csv_paths = glob.glob(candidate_path)
+
+            if not candidates_csv_paths:
+                raise ValueError(f"No CSV files found for telescope candidates {candidate}")
+
+            return pd.read_csv(candidates_csv_paths[0])
+        
+        except FileNotFoundError:
+            print(f"Telescope candidates {candidate} not found.")
+            return None
+        
+    else:
+        
+        # If the parameter is not a string, it generates an error.
+        raise TypeError("The candidate argument must be a string.")
+    
 
 def open_datasets(get_candidates=False):
     
@@ -38,9 +79,10 @@ def open_datasets(get_candidates=False):
     """
 
     # ============= Open Datasets =============
-    df_tess = all_functions.read_dataset('tess')
-    df_kepler = all_functions.read_dataset('kepler')
-    df_k2 = all_functions.read_dataset('k2')
+    
+    df_tess = general_data_functions.read_dataset('tess')
+    df_kepler = general_data_functions.read_dataset('kepler')
+    df_k2 = general_data_functions.read_dataset('k2')
 
     # drop rows of planets that were discovered by methods other than transit
     df_k2 = df_k2[df_k2['discoverymethod'] != 'Radial Velocity']
@@ -70,12 +112,14 @@ def open_datasets(get_candidates=False):
     df_k2 = df_k2[['id_target', 'disposition', 'period', 'duration']]
     
     # ============= Save candidate data =============
+    
     if get_candidates:
         df_candidates_tess = df_tess[df_tess['disposition'] == "CANDIDATE"]
         df_candidates_kepler = df_kepler[df_kepler['disposition'] == "CANDIDATE"]
         df_candidates_k2 = df_k2[df_k2['disposition'] == "CANDIDATE"]
 
         # ============= Create the directory =============
+        
         get_current_path = os.getcwd()
 
         # Path
@@ -105,7 +149,7 @@ def open_datasets(get_candidates=False):
     return df_tess, df_kepler, df_k2
 
 
-def saving_preprocessed_data(local_curves, global_curves, local_global_target):
+def saving_preprocessed_data(local_curves, global_curves, local_global_target, candidate = False):
     
     """
     Description:
@@ -118,10 +162,15 @@ def saving_preprocessed_data(local_curves, global_curves, local_global_target):
         local_curves: list of local curves.
         global_curves: list of global curves.
         local_global_target: label for the pre-processed data.
+        candidate: bool
         
     Return:
         None.
     """
+    
+    if candidate:
+        local_path = 'Preprocessed_candidate'
+        candidate_path = '_candidate'
 
     df_local = pd.DataFrame(local_curves)
     df_global = pd.DataFrame(global_curves)
@@ -133,10 +182,11 @@ def saving_preprocessed_data(local_curves, global_curves, local_global_target):
     df_local['label'] = pd.Series(local_global_target)
 
     # ============= Create the directory =============
+    
     get_current_path = os.getcwd()
 
     # Path
-    path = os.path.join(get_current_path, 'Preprocessed')
+    path = os.path.join(get_current_path, local_path)
 
     try:
         if os.path.exists(path):
@@ -148,8 +198,8 @@ def saving_preprocessed_data(local_curves, global_curves, local_global_target):
     except OSError as error:
         print("Directory can not be created: ", error)
 
-    df_local.to_csv(path + '\\preprocessed_local_view.csv')
-    df_global.to_csv(path + '\\preprocessed_global_view.csv')
+    df_local.to_csv(path + f'\\preprocessed_local_view{candidate_path}.csv')
+    df_global.to_csv(path + f'\\preprocessed_global_view{candidate_path}.csv')
 
 
 def process_target(name_telescope, row):
@@ -281,82 +331,6 @@ def process_threads(processinQqueue, answerQueue, finishedTheLines, name_telesco
         answerQueue.put_nowait(result)
 
     answerQueue.put_nowait("ts")
-
-
-if __name__ == '__main__':
-    
-    num_threads = multiprocessing.cpu_count()
-
-    start_time = time.time()
-
-    df_tess, df_kepler, df_k2 = open_datasets(get_candidates= True)
-    
-    # telescopes_list = {'Kepler': df_kepler, 'TESS': df_tess}
-
-    # TEST
-    telescopes_list = {'Kepler': df_kepler.sample(10)}
-
-    # ============= Execution of threads for data pre-processing =============
-    local_curves = []
-    global_curves = []
-    local_global_target = []
-
-    for name_telescope, df_telescope in telescopes_list.items():
-
-        # Manager
-        manager = Manager()
-
-        # Flare gun
-        finishedTheLines = manager.Event()
-
-        # Processing Queues
-        processinQqueue = Queue(df_telescope.shape[0])
-        answerQueue = Queue(df_telescope.shape[0] + num_threads)
-
-        threads = []
-
-        for i in range(num_threads):
-            threads.append(Process(target=process_threads, args=(
-                processinQqueue, answerQueue, finishedTheLines, name_telescope)))
-            threads[-1].start()
-
-        for _, row in df_telescope.iterrows():
-            processinQqueue.put_nowait(row)
-
-        time.sleep(1)
-        finishedTheLines.set()
-
-        threads_finished = 0
-        while threads_finished < num_threads:
-            try:
-                get_result = answerQueue.get(False)
-                if get_result == "ts":
-                    threads_finished += 1
-                    continue
-
-                # Finish processing the data
-                (target, data_local, data_global) = get_result
-                local_global_target.append(target)
-                local_curves.append(data_local)
-                global_curves.append(data_global)
-
-            except queue.Empty:
-                continue
-
-        for t in threads:
-            t.join()
-
-    # marks the end of the runtime
-    end_time = time.time()
-
-    # Calculates execution time in seconds
-    execution_time = end_time - start_time
-
-    print(f"Runtime: {execution_time:.2f} seconds")
-
-    # Calls the function to save the preprocessed data locally
-    saving_preprocessed_data(local_curves, global_curves, local_global_target)
-
 
 """
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= 
