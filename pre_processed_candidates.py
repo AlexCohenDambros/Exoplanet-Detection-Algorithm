@@ -10,9 +10,11 @@ if __name__ == '__main__':
 
     start_time = time.time()
 
-    df_tess_candidates = pre_processed_curves.open_candidates("TESS")
+    df_tess_candidates = pre_processed_curves.open_datasets("TESS", candidates= True)
+    df_kepler_candidates = pre_processed_curves.open_datasets("KEPLER", candidates= True)
     
-
+    print(df_kepler_candidates.columns.tolist())
+    
     # TEST
     telescopes_list = {'TESS': df_tess_candidates.sample(10)}
 

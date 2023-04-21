@@ -9,7 +9,9 @@ if __name__ == '__main__':
 
     start_time = time.time()
 
-    df_tess, df_kepler, df_k2 = pre_processed_curves.open_datasets(get_candidates= True)
+    df_tess = pre_processed_curves.open_datasets("TESS")
+    df_kepler = pre_processed_curves.open_datasets("KEPLER")
+    df_k2 = pre_processed_curves.open_datasets("K2")
     
     # telescopes_list = {'Kepler': df_kepler, 'TESS': df_tess}
 

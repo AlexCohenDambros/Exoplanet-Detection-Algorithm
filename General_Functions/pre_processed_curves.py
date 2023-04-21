@@ -23,130 +23,93 @@ from multiprocessing import Process, Manager, Queue, freeze_support
 
 # ============= Functions =============
 
-def open_candidates(candidate):
-    
-    "Kepler"
+def open_datasets(name_telescope, candidates=False):
     
     """
     Description:
-        Loads one or several .csv candidates into a pandas dataframe.
-    
-    Argumentos:
-        candidato -- Uma string representando o nome do arquivo .csv a ser carregado.
-    
-    Return:
-        A single pandas dataframe with the data loaded
-    """
-    
-    if isinstance(candidate, str):
-        candidate = candidate.upper()
-        if candidate not in ["K2", "KEPLER", "TESS"]:
-            raise ValueError("Candidate must be one of 'K2', 'KEPLER', or 'TESS'.")
-        
-        # Se candidates for uma string, carrega um único arquivo.
-        try:
-            candidate_path = f'Candidates/candidate_target_data_{candidate}.csv'
-            candidates_csv_paths = glob.glob(candidate_path)
-
-            if not candidates_csv_paths:
-                raise ValueError(f"No CSV files found for telescope candidates {candidate}")
-
-            return pd.read_csv(candidates_csv_paths[0])
-        
-        except FileNotFoundError:
-            print(f"Telescope candidates {candidate} not found.")
-            return None
-        
-    else:
-        
-        # If the parameter is not a string, it generates an error.
-        raise TypeError("The candidate argument must be a string.")
-    
-
-def open_datasets(get_candidates=False):
-    
-    """
-    Description:
-        Function used to filter all received data from received.
+        Function used to load data from space telescopes.
 
     Parameters:
-        get_candidates : bool, optional
-            If True, saves the candidate data as a CSV file in a new directory named 'Candidates'.
+        name_telescope: string
+            Name of the telescope you want to load the data.
+        candidates : bool
+            If True, returns all dataframes with candidate data from the telescope passed as a parameter
 
-    Returns:
+    Return:
         pandas.DataFrame
             Dataframe containing candidate target data.
     """
+    name_telescope = name_telescope.upper()
+    
+    # ============= Input validation =============
+    if not isinstance(name_telescope, str):
+        raise TypeError("name_telescope must be a string.")
+    
+    if not isinstance(candidates, bool):
+        raise TypeError("candidates must be a boolean.")
+    
+    if name_telescope not in ["K2", "KEPLER", "TESS"]:
+        raise ValueError("The telescope name must be one of the following: 'K2', 'Kepler' or 'TESS'.")
 
     # ============= Open Datasets =============
     
-    df_tess = general_data_functions.read_dataset('tess')
-    df_kepler = general_data_functions.read_dataset('kepler')
-    df_k2 = general_data_functions.read_dataset('k2')
+    dataset_telescope = general_data_functions.read_dataset(name_telescope)
 
-    # drop rows of planets that were discovered by methods other than transit
-    df_k2 = df_k2[df_k2['discoverymethod'] != 'Radial Velocity']
+   # Defines the information dictionary for each telescope
+    telescope_info = {
+        "K2": {
+            "drop_method": "Radial Velocity",
+            "rename_columns": {
+                "tic_id": "id_target",
+                "pl_orbper": "period",
+                "pl_trandur": "duration"
+            },
+            "select_columns": ['id_target', 'disposition', 'period', 'duration']
+        },
+        "KEPLER": {
+            "drop_method": None,
+            "rename_columns": {
+                "kepid": "id_target",
+                "koi_disposition": "disposition",
+                "koi_period": "period",
+                "koi_duration": "duration"
+            },
+            "select_columns": ['id_target', 'disposition', 'period', 'duration', 'koi_time0bk']
+        },
+        "TESS": {
+            "drop_method": None,
+            "rename_columns": {
+                "tid": "id_target",
+                "tfopwg_disp": "disposition",
+                "pl_orbper": "period",
+                "pl_trandurh": "duration"
+            },
+            "select_columns": ['id_target', 'disposition', 'period', 'duration']
+        }
+    }
 
-    # ============= Selecting specific columns =============
+    # Process the dataset based on the telescope information
+    if name_telescope in telescope_info:
+        info = telescope_info[name_telescope]
+        
+        if info['drop_method'] is not None:
+            dataset_telescope = dataset_telescope[dataset_telescope['discoverymethod'] != info['drop_method']]
+        
+        dataset_telescope.rename(columns=info['rename_columns'], inplace=True)
+        dataset_telescope = dataset_telescope[info['select_columns']]
 
-    # TESS
-
-    df_tess.rename(columns={"tid": "id_target", 
-                            "tfopwg_disp": "disposition", 
-                            "pl_orbper": "period",
-                            "pl_trandurh": "duration"}, inplace=True)
-    df_tess = df_tess[['id_target', 'disposition', 'period', 'duration']]
-
-    # KEPLER
-    df_kepler.rename(columns={"kepid": "id_target", 
-                              "koi_disposition": "disposition",
-                              "koi_period": "period",
-                              "koi_duration": "duration"}, inplace=True)
-    df_kepler = df_kepler[['id_target', 'disposition', 'period', 'duration', 'koi_time0bk']]
-
-    # K2
-    df_k2.rename(columns={"tic_id": "id_target", 
-                          "pl_orbper": "period",
-                          "pl_trandur": "duration"}, inplace=True)
-    
-    df_k2 = df_k2[['id_target', 'disposition', 'period', 'duration']]
-    
     # ============= Save candidate data =============
     
-    if get_candidates:
-        df_candidates_tess = df_tess[df_tess['disposition'] == "CANDIDATE"]
-        df_candidates_kepler = df_kepler[df_kepler['disposition'] == "CANDIDATE"]
-        df_candidates_k2 = df_k2[df_k2['disposition'] == "CANDIDATE"]
-
-        # ============= Create the directory =============
-        
-        get_current_path = os.getcwd()
-
-        # Path
-        path = os.path.join(get_current_path, 'Candidates')
-
-        try:
-            if os.path.exists(path):
-                shutil.rmtree(path, ignore_errors=True)
-                os.makedirs(path, exist_ok=True)
-            else:
-                os.makedirs(path, exist_ok=True)
-
-        except OSError as error:
-            print("Directory can not be created: ", error)
-
-        df_candidates_tess.to_csv(path + '\\candidate_target_data_TESS.csv')
-        df_candidates_kepler.to_csv(path + '\\candidate_target_data_KEPLER.csv')
-        df_candidates_k2.to_csv(path + '\\candidate_target_data_K2.csv')
-
-    # filtering the data by confirmed targets and false positives
-    candidate_disposition = ['CONFIRMED', 'FALSE POSITIVE']
-
-    df_tess = df_tess[df_tess['disposition'].isin(candidate_disposition)]
-    df_kepler = df_kepler[df_kepler['disposition'].isin(candidate_disposition)]
-    df_k2 = df_k2[df_k2['disposition'].isin(candidate_disposition)]
-
-    return df_tess, df_kepler, df_k2
+    if candidates:
+        candidate_disposition = ['CANDIDATE']
+    else:
+        # filtering the data by confirmed targets and false positives
+        candidate_disposition = ['CONFIRMED', 'FALSE POSITIVE']
+    
+    
+    dataset_telescope = dataset_telescope[dataset_telescope['disposition'].isin(candidate_disposition)]
+    
+    return dataset_telescope
 
 
 def saving_preprocessed_data(local_curves, global_curves, local_global_target, candidate = False):
@@ -220,8 +183,11 @@ def process_target(name_telescope, row):
     id_target = row[0]
     period = row[2]
     duration = row[3]
-    t0 = row[4] if not pd.isna(row[4]) else None
-
+    try:
+        t0 = row[4]
+    except IndexError:
+        t0 = None
+        
     try:
         if name_telescope == 'Kepler':
             id_target = 'KIC ' + str(id_target)
@@ -342,7 +308,6 @@ it is necessary to replace the function in the open source library for the code 
 
 This function below is the function present in previous versions of the library. 
 It is not possible to go back to old versions of the package in general because there are functions that were not implemented before.
-
 
 def bin(
         self,
