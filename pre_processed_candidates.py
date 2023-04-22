@@ -5,18 +5,18 @@ from General_Functions import pre_processed_curves
 from multiprocessing import Process, Manager, Queue, freeze_support
 
 if __name__ == '__main__':
-    
+
     num_threads = pre_processed_curves.multiprocessing.cpu_count()
 
     start_time = time.time()
 
-    df_tess_candidates = pre_processed_curves.open_datasets("TESS", candidates= True)
-    df_kepler_candidates = pre_processed_curves.open_datasets("KEPLER", candidates= True)
-    
-    print(df_kepler_candidates.columns.tolist())
-    
+    df_tess_candidates = pre_processed_curves.open_datasets(
+        "TESS", candidates=True)
+    df_kepler_candidates = pre_processed_curves.open_datasets(
+        "KEPLER", candidates=True)
+
     # TEST
-    telescopes_list = {'TESS': df_tess_candidates.sample(10)}
+    telescopes_list = {'TESS': df_tess_candidates, 'Kepler': df_kepler_candidates}
 
     # ============= Execution of threads for data pre-processing =============
     local_curves_candidate = []
@@ -77,4 +77,5 @@ if __name__ == '__main__':
     print(f"Runtime: {execution_time:.2f} seconds")
 
     # Calls the function to save the preprocessed data locally
-    pre_processed_curves.saving_preprocessed_data(local_curves_candidate, global_curves_candidate, local_global_target_candidate, candidate = True)
+    pre_processed_curves.saving_preprocessed_data(
+        local_curves_candidate, global_curves_candidate, local_global_target_candidate, candidate=True)

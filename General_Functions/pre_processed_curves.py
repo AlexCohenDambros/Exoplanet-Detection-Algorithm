@@ -191,16 +191,13 @@ def process_target(name_telescope, row):
     try:
         if name_telescope == 'Kepler':
             id_target = 'KIC ' + str(id_target)
-            lcs = lk.search_lightcurve(
-                id_target, author=name_telescope, cadence='long').download_all()
-
         elif name_telescope == 'TESS':
             id_target = 'TIC ' + str(id_target)
-            lcs = lk.search_lightcurve(
-                id_target, mission=name_telescope, cadence='long').download_all()
-
         else:
             return - 1
+        
+        lcs = lk.search_lightcurve(
+                id_target, cadence='long').download_all()
 
         if lcs is not None:
 
@@ -208,7 +205,7 @@ def process_target(name_telescope, row):
             lc_raw = lcs.stitch()
 
             # Clean outliers, but only those that are above the mean level (e.g. attributable to stellar flares or cosmic rays).
-            lc_clean = lc_raw.remove_outliers(sigma=3)
+            lc_clean = lc_raw.remove_outliers(sigma=20, sigma_upper=4)
 
             # We have to mask the transit to avoid self-subtraction the genuine planet signal when we flatten the lightcurve. We have to do a hack to find where the time series should be masked.
             if t0 is not None:
