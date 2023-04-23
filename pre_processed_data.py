@@ -13,10 +13,7 @@ if __name__ == '__main__':
     df_kepler = pre_processed_curves.open_datasets("KEPLER")
     df_k2 = pre_processed_curves.open_datasets("K2")
     
-    # telescopes_list = {'Kepler': df_kepler, 'TESS': df_tess}
-
-    # TEST
-    telescopes_list = {'Kepler': df_kepler.sample(10)}
+    telescopes_list = {'Kepler': df_kepler, 'TESS': df_tess}
 
     # ============= Execution of threads for data pre-processing =============
     local_curves = []

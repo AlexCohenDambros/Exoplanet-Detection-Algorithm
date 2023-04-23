@@ -134,6 +134,10 @@ def saving_preprocessed_data(local_curves, global_curves, local_global_target, c
     if candidate:
         local_path = 'Preprocessed_candidate'
         candidate_path = '_candidate'
+    else:
+        local_path = 'Preprocessed'
+        candidate_path = ''
+        
 
     df_local = pd.DataFrame(local_curves)
     df_global = pd.DataFrame(global_curves)
