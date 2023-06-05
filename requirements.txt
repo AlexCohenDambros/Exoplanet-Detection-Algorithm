@@ -9,3 +9,5 @@ astropy==5.0
 scikit-learn-extra==0.3.0
 tensorflow
 flask
+imbalanced-learn
+transitleastsquares
