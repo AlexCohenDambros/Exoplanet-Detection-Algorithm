@@ -11,15 +11,12 @@ This is an example code used to obtain light curves from space telescopes and pr
 # ============= Imports =============
 
 import os
-import glob
 import queue
 import shutil
 import numpy as np
 import pandas as pd
-import multiprocessing
 import lightkurve as lk
 from General_Functions import general_data_functions
-from multiprocessing import Process, Manager, Queue, freeze_support
 
 # ============= Functions =============
 
