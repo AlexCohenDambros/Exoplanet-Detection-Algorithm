@@ -23,6 +23,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Embedding
 from sklearn import metrics
 from sklearn.svm import SVC
+from sklearn.neural_network import MLPClassifier
 from imblearn.over_sampling import SMOTE
 from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
@@ -242,9 +243,9 @@ def classifier_function(dict_model_parameters):
         precision_local, recall_local, acc_local, f1_local, auc_local, ks_local, y_pred_local = run_classifier_models(
             name, '_local', model['clf'], model['parameters'], cv, X_train_local, y_train_local, X_test_local, y_test_local, preprocessor_local)
 
-        # print("\n-Global")
-        # precision_global, recall_global, acc_global, f1_global, auc_global, ks_global, y_pred_global = run_classifier_models(
-        #     name, '_global', model['clf'], model['parameters'], cv, X_train_global, y_train_global, X_test_global, y_test_global, preprocessor_global)
+        print("\n-Global")
+        precision_global, recall_global, acc_global, f1_global, auc_global, ks_global, y_pred_global = run_classifier_models(
+            name, '_global', model['clf'], model['parameters'], cv, X_train_global, y_train_global, X_test_global, y_test_global, preprocessor_global)
 
         results_local[name + '_local'] = {
             'accuracy': acc_local,
@@ -254,14 +255,14 @@ def classifier_function(dict_model_parameters):
             'auc': auc_local,
             'ks': ks_local
         }
-        # results_global[name + '_global'] = {
-        #     'accuracy': acc_global,
-        #     'precision': precision_global,
-        #     'recall': recall_global,
-        #     'f1': f1_global,
-        #     'auc': auc_global,
-        #     'ks': ks_global
-        # }
+        results_global[name + '_global'] = {
+            'accuracy': acc_global,
+            'precision': precision_global,
+            'recall': recall_global,
+            'f1': f1_global,
+            'auc': auc_global,
+            'ks': ks_global
+        }
 
     # marks the end of the runtime
     end_time = time.time()
@@ -271,7 +272,7 @@ def classifier_function(dict_model_parameters):
     print(f"\nRuntime: {execution_time:.2f} seconds")
 
     save_models_results.saving_the_results(results_local, y_test_local, y_pred_local)
-    # save_models_results.saving_the_results(results_global, y_test_global, y_pred_global)
+    save_models_results.saving_the_results(results_global, y_test_global, y_pred_global)
 
 if __name__ == '__main__':
 
@@ -329,14 +330,6 @@ if __name__ == '__main__':
     # ============= All models and parameters of classification models =============
 
     models_and_parameters_C = {
-        # 'SVM': {
-        #     'clf': SVC(probability=True, random_state=42),
-        #     'parameters': {
-        #         'C': [1, 3, 5, 10, 15],
-        #         'kernel': ['linear', 'rbf'],
-        #         'tol': [1e-3, 1e-4]
-        #     },
-        # },
         'AdaBoostClassifier': {
             'clf': AdaBoostClassifier(random_state=42),
             'parameters': {
@@ -346,14 +339,34 @@ if __name__ == '__main__':
         'XGBClassifier': {
             'clf': xgb.XGBClassifier(objective = "binary:logistic", random_state=42),
             'parameters': {
-                
+                'min_child_weight': [1, 5, 10],
+                'gamma': [0.5, 1, 1.5, 2, 5],
+                'max_depth': [3, 4, 5]
             }
-        }
+        },
+        # 'SVM': {
+        #     'clf': SVC(probability=True, random_state=42),
+        #     'parameters': {
+        #         'C': [1, 3, 5, 10, 15],
+        #         'kernel': ['linear', 'rbf'],
+        #         'tol': [1e-3, 1e-4]
+        #     },
+        # },
+        # 'MLPClassifier': {
+        #     'clf': MLPClassifier(random_state=42),
+        #     'parameters': {
+        #         'solver': ['lbfgs', 'sgd', 'adam'], 
+        #         'max_iter': [1000,1300,1500,2000], 
+        #         'alpha': 10.0 ** -np.arange(1, 10), 
+        #         'hidden_layer_sizes':np.arange(10, 15),
+        #         'tol': [1e-3, 1e-4]
+        #     },
+        # },
     }
     
     # ============= Running classifier models =============
     
-    # classifier_function(models_and_parameters_C)
+    classifier_function(models_and_parameters_C)
     
     # ============= Running LSTM =============
     
