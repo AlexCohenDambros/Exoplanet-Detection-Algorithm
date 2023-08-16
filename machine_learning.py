@@ -15,7 +15,7 @@ from scipy import stats
 
 import warnings
 from warnings import simplefilter
-
+from sklearn.exceptions import ConvergenceWarning, FitFailedWarning
 
 import xgboost as xgb
 import tensorflow as tf
@@ -42,7 +42,11 @@ np.random.seed(42)
 # ============= Warnings =============
 
 warnings.simplefilter("ignore")
+warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore", category=RuntimeWarning)
 simplefilter(action='ignore', category=FutureWarning)
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
+warnings.filterwarnings("ignore", category=FitFailedWarning)
 
 # ============= General Functions =============
 
@@ -119,12 +123,12 @@ def model_LSTM(vector_size):
     # Creating the LSTM (Long Short Term Memory) network
     
     model = Sequential()
-    # model.add(Embedding(vocab_size, vector_size))
-    # model.add(tf.keras.layers.LSTM(embedding_dim, dropout = 0.25 , return_sequences=True))
-    # model.add(tf.keras.layers.LSTM(embedding_dim, dropout = 0.25))
-    # model.add(tf.keras.layers.Dense(64, activation='relu'))
-    # model.add(tf.keras.layers.Dense(2, activation='softmax'))
-    # model.add(Dense(units=1)) 
+    model.add(Embedding(vocab_size, 201))
+    model.add(tf.keras.layers.LSTM(embedding_dim, dropout = 0.25 , return_sequences=True))
+    model.add(tf.keras.layers.LSTM(embedding_dim, dropout = 0.25))
+    model.add(tf.keras.layers.Dense(64, activation='relu'))
+    model.add(tf.keras.layers.Dense(2, activation='softmax'))
+    model.add(Dense(units=1)) 
     
     # Compiling the LSTM
     model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
@@ -344,24 +348,24 @@ if __name__ == '__main__':
                 'max_depth': [3, 4, 5]
             }
         },
-        # 'SVM': {
-        #     'clf': SVC(probability=True, random_state=42),
-        #     'parameters': {
-        #         'C': [1, 3, 5, 10, 15],
-        #         'kernel': ['linear', 'rbf'],
-        #         'tol': [1e-3, 1e-4]
-        #     },
-        # },
-        # 'MLPClassifier': {
-        #     'clf': MLPClassifier(random_state=42),
-        #     'parameters': {
-        #         'solver': ['lbfgs', 'sgd', 'adam'], 
-        #         'max_iter': [1000,1300,1500,2000], 
-        #         'alpha': 10.0 ** -np.arange(1, 10), 
-        #         'hidden_layer_sizes':np.arange(10, 15),
-        #         'tol': [1e-3, 1e-4]
-        #     },
-        # },
+        'SVM': {
+            'clf': SVC(probability=True, random_state=42),
+            'parameters': {
+                'C': [1, 3, 5, 10, 15],
+                'kernel': ['linear', 'rbf'],
+                'tol': [1e-3, 1e-4]
+            },
+        },
+        'MLPClassifier': {
+            'clf': MLPClassifier(random_state=42),
+            'parameters': {
+                'solver': ['sgd', 'adam'], 
+                'max_iter': [1000, 1300, 1500, 2000], 
+                'alpha': 10.0 ** -np.arange(1, 10), 
+                'hidden_layer_sizes':np.arange(10, 15),
+                'tol': [1e-3, 1e-4]
+            },
+        },
     }
     
     # ============= Running classifier models =============
