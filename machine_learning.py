@@ -7,35 +7,44 @@
 '''
 
 # ============= Imports =============
+from __future__ import absolute_import, division, print_function, unicode_literals
+
+import tensorflow as tf
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+import pandas as pd
+
+mpl.rcParams['figure.figsize'] = (8, 6)
+mpl.rcParams['axes.grid'] = False
 
 import time
-import numpy as np
-import pandas as pd
-from scipy import stats
-
 import warnings
 from warnings import simplefilter
 from sklearn.exceptions import ConvergenceWarning, FitFailedWarning
 
 import xgboost as xgb
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Embedding
+
+from scipy import stats
+
 from sklearn import metrics
 from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
-from imblearn.over_sampling import SMOTE
-from sklearn.impute import SimpleImputer
-from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.compose import ColumnTransformer
+from imblearn.over_sampling import SMOTE
 from sklearn.metrics import roc_auc_score
 
 from General_Functions import save_models_results
+
 
 np.random.seed(42)
 
@@ -50,7 +59,7 @@ warnings.filterwarnings("ignore", category=FitFailedWarning)
 
 # ============= General Functions =============
 
-def pre_processing_onehotencoder(df_encoder):
+def preProcessingOneHotEncoder(df_encoder):
   
     try: 
         X = df_encoder.drop(['label'], axis = 1)
@@ -90,7 +99,7 @@ def pre_processing_onehotencoder(df_encoder):
     return preprocessor.fit(df_encoder[features_update])
 
 
-def compute_ks(y_test, y_pred_proba):
+def computeKs(y_test, y_pred_proba):
     
     """
     Description:
@@ -116,31 +125,106 @@ def compute_ks(y_test, y_pred_proba):
     ks = 100.0 * stats.ks_2samp(positives, negatives)[0]
     return ks
 
+def plotTrainHistoryLSTM(history, title):
+    
+  loss = history.history['loss']
+  val_loss = history.history['val_loss']
+
+  epochs = range(len(loss))
+
+  plt.figure()
+
+  plt.plot(epochs, loss, 'b', label='Training loss')
+  plt.plot(epochs, val_loss, 'r', label='Validation loss')
+  plt.title(title)
+  plt.legend()
+
+  plt.show()
+  
+def createTimeSteps(length):
+    
+  time_steps = []
+  
+  for i in range(-length, 0, 1):
+    time_steps.append(i)
+    
+  return time_steps
+  
+def plotPredsLSTM(plot_data, delta=0):
+    
+    labels = ['History', 'True Future','LSTM Prediction']
+    marker = ['.-', 'gX', 'ro' , 'bo']
+    time_steps = createTimeSteps(plot_data[0].shape[0])
+    
+    future = delta
+
+    plt.title('Predictions')
+    for i, x in enumerate(plot_data):
+      if i:
+        plt.plot(future, plot_data[i], marker[i], markersize=10,
+                label=labels[i])
+      else:
+        plt.plot(time_steps, plot_data[i].flatten(), marker[i], label=labels[i])
+    plt.legend()
+    plt.xlim([time_steps[0], (future+5)*2])
+    plt.xlabel('Time-Step')
+    return plt
+
 # ============= LSTM =============
 
-def model_LSTM(vector_size):
+def methodLSTM(X_train, y_train, X_test, y_test):
     
-    # Creating the LSTM (Long Short Term Memory) network
+    # Defining the datasets 
     
-    model = Sequential()
-    model.add(Embedding(vocab_size, 201))
-    model.add(tf.keras.layers.LSTM(embedding_dim, dropout = 0.25 , return_sequences=True))
-    model.add(tf.keras.layers.LSTM(embedding_dim, dropout = 0.25))
-    model.add(tf.keras.layers.Dense(64, activation='relu'))
-    model.add(tf.keras.layers.Dense(2, activation='softmax'))
-    model.add(Dense(units=1)) 
-    
-    # Compiling the LSTM
-    model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    BATCH_SIZE = 256
+    BUFFER_SIZE = 10000
 
-    # LSTM training
-    model.fit(X_train_local, y_train_local, epochs=20, validation_data=(X_test_local, y_test_local), verbose=2)
+    train_univariate = tf.data.Dataset.from_tensor_slices((X_train, y_train))
+    train_univariate = train_univariate.cache().shuffle(BUFFER_SIZE).batch(BATCH_SIZE).repeat()
 
-    model.summary()
+    val_univariate = tf.data.Dataset.from_tensor_slices((X_test, y_test))
+    val_univariate = val_univariate.batch(BATCH_SIZE).repeat()
+    
+    # Creating the architecture
+    simple_lstm_model = tf.keras.models.Sequential([
+    tf.keras.layers.LSTM(8, input_shape=(X_train.shape[1], y_train.shape[2])),
+    tf.keras.layers.Dense(1)
+    ])
+
+    simple_lstm_model.compile(optimizer='adam', loss='mae')
+
+    simple_lstm_model.summary()
+    
+    
+    # Training LSTM
+    
+    EPOCHS = 10
+     
+    lstm_log = simple_lstm_model.fit(train_univariate, epochs=EPOCHS,
+                      validation_data=val_univariate, validation_steps=50)
+    
+    plotTrainHistoryLSTM(lstm_log, 'LSTM Training and validation loss')
+    
+    future = 5
+    
+    for x, y in val_univariate.take(5):
+        plot = plotPredsLSTM([x[0].numpy(), y[0].numpy(), simple_lstm_model.predict(x)[0]], future)
+        plot.show()
+    
+    # Calculates the accuracy  
+
+    err_lstm=0
+
+    for x, y in val_univariate.take(10):
+        err_lstm += abs(y[0].numpy() - simple_lstm_model.predict(x)[0])
+
+    err_lstm = err_lstm/10
+    
+    print(err_lstm)
 
 # ============= Classifier Function =============
 
-def run_classifier_models(name_model, sufix, clf, parameters, cv, X_train, y_train, X_test, y_test, preprocessor):
+def runClassifierModels(name_model, sufix, clf, parameters, cv, X_train, y_train, X_test, y_test, preprocessor):
     
     """
     Description: 
@@ -173,10 +257,6 @@ def run_classifier_models(name_model, sufix, clf, parameters, cv, X_train, y_tra
     
     clf = GridSearchCV(clf, parameters, cv=cv, scoring='accuracy', n_jobs=-1)
     
-    # Smote balancing
-    # smote = SMOTE()  # Create a SMOTE instance
-    # X_resampled, y_resampled = smote.fit_resample(X_train, y_train)  # Apply SMOTE to data
-    
     clf = make_pipeline(preprocessor, clf).fit(X_train, y_train)
     
     y_pred = clf.predict(X_test)
@@ -202,7 +282,7 @@ def run_classifier_models(name_model, sufix, clf, parameters, cv, X_train, y_tra
     print("AUC: %.2f" % (auc))
     # KS
     try:
-        ks = compute_ks(y_test, probs)
+        ks = computeKs(y_test, probs)
         print("KS: %.2f" % ks)
     except:
         ks = None
@@ -213,7 +293,7 @@ def run_classifier_models(name_model, sufix, clf, parameters, cv, X_train, y_tra
     return precision, recall, acc, f1, auc, ks, y_pred
 
 
-def classifier_function(dict_model_parameters):
+def classifiers(dict_model_parameters):
     
     """
     Description: 
@@ -244,11 +324,11 @@ def classifier_function(dict_model_parameters):
         print("Model:", name)
 
         print("\n-Local")
-        precision_local, recall_local, acc_local, f1_local, auc_local, ks_local, y_pred_local = run_classifier_models(
+        precision_local, recall_local, acc_local, f1_local, auc_local, ks_local, y_pred_local = runClassifierModels(
             name, '_local', model['clf'], model['parameters'], cv, X_train_local, y_train_local, X_test_local, y_test_local, preprocessor_local)
 
         print("\n-Global")
-        precision_global, recall_global, acc_global, f1_global, auc_global, ks_global, y_pred_global = run_classifier_models(
+        precision_global, recall_global, acc_global, f1_global, auc_global, ks_global, y_pred_global = runClassifierModels(
             name, '_global', model['clf'], model['parameters'], cv, X_train_global, y_train_global, X_test_global, y_test_global, preprocessor_global)
 
         results_local[name + '_local'] = {
@@ -311,8 +391,8 @@ if __name__ == '__main__':
     global_view['label'] = global_view['label'].map(target_map)
     
     # ============= preprocessor data =============
-    preprocessor_local = pre_processing_onehotencoder(local_view)
-    preprocessor_global = pre_processing_onehotencoder(global_view)
+    preprocessor_local = preProcessingOneHotEncoder(local_view)
+    preprocessor_global = preProcessingOneHotEncoder(global_view)
     
     # ============= Separating into X and y =============
 
@@ -329,6 +409,12 @@ if __name__ == '__main__':
 
     X_train_global, X_test_global, y_train_global, y_test_global = train_test_split(
         X_global, y_global, test_size= 0.3, random_state=42, stratify=y_global)
+    
+    
+    # Smote balancing
+    smote = SMOTE()  # Create a SMOTE instance
+    X_train_local, y_train_local = smote.fit_resample(X_train_local, y_train_local)  # Apply SMOTE to data local
+    X_train_global, y_train_global = smote.fit_resample(X_train_global, y_train_global)  # Apply SMOTE to data global
     
     
     # ============= All models and parameters of classification models =============
@@ -370,8 +456,24 @@ if __name__ == '__main__':
     
     # ============= Running classifier models =============
     
-    classifier_function(models_and_parameters_C)
+    # classifiers(models_and_parameters_C)
     
     # ============= Running LSTM =============
     
+    '''Tamanho da Janela do Historico'''
+    univariate_past_history = 30  #30 observacoes anteriores
+    future = univariate_future_target = 5  #a proxima observação
+
+    # x_train_uni, y_train_uni = univariate_data(uni_data, 0, TRAIN_SPLIT,
+    #                                         univariate_past_history,
+    #                                         univariate_future_target)
+    # x_val_uni, y_val_uni = univariate_data(uni_data, TRAIN_SPLIT, None,
+    #                                     univariate_past_history,
+    #                                     univariate_future_target)
     
+    
+    # Test LSTM data local
+    methodLSTM(X_train_local, y_train_local, X_test_local, y_test_local)
+    
+    # Test LSTM data global
+    methodLSTM(X_train_global, y_train_global, X_test_global, y_test_global)
