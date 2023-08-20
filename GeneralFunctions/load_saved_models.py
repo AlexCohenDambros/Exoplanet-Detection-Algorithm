@@ -56,7 +56,7 @@ def getting_models(model_name_multiview):
     
     models_loaded = {}
 
-    path = Path.cwd() / "Saved_models"
+    path = Path.cwd() / "SavedModels"
 
     if os.path.exists(path):
         for subdir, _, files in os.walk(path):

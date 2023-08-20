@@ -80,7 +80,7 @@ def saving_the_results(dict_result, y_test, y_pred):
         name = name_parts[0]
          
         # Path
-        path = os.path.join(os.getcwd(), f'Model_Results\\{name}')
+        path = os.path.join(os.getcwd(), f'ModelResults\\{name}')
 
         # Create the directory
         os.makedirs(path, exist_ok=True)

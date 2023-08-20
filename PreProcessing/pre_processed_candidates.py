@@ -1,26 +1,29 @@
 import time
 import queue
-from General_Functions import pre_processed_curves
+import multiprocessing
+from GeneralFunctions import pre_processed_curves
 from multiprocessing import Process, Manager, Queue, freeze_support
 
 if __name__ == '__main__':
-    
+
     num_threads = pre_processed_curves.multiprocessing.cpu_count()
 
     start_time = time.time()
 
-    df_tess = pre_processed_curves.open_datasets("TESS")
-    df_kepler = pre_processed_curves.open_datasets("KEPLER")
-    df_k2 = pre_processed_curves.open_datasets("K2")
-    
-    telescopes_list = {'Kepler': df_kepler, 'TESS': df_tess}
+    df_tess_candidates = pre_processed_curves.open_datasets(
+        "TESS", candidates=True)
+    df_kepler_candidates = pre_processed_curves.open_datasets(
+        "KEPLER", candidates=True)
+
+    # TEST
+    telescopes_list = {'TESS': df_tess_candidates, 'Kepler': df_kepler_candidates}
 
     # ============= Execution of threads for data pre-processing =============
-    local_curves = []
-    global_curves = []
-    local_global_target = []
+    local_curves_candidate = []
+    global_curves_candidate = []
+    local_global_target_candidate = []
 
-    for name_telescope, df_telescope in telescopes_list.items():
+    for name_candidate, df_candidate in telescopes_list.items():
 
         # Manager
         manager = Manager()
@@ -29,17 +32,17 @@ if __name__ == '__main__':
         finishedTheLines = manager.Event()
 
         # Processing Queues
-        processinQqueue = Queue(df_telescope.shape[0])
-        answerQueue = Queue(df_telescope.shape[0] + num_threads)
+        processinQqueue = Queue(df_candidate.shape[0])
+        answerQueue = Queue(df_candidate.shape[0] + num_threads)
 
         threads = []
 
         for i in range(num_threads):
             threads.append(Process(target=pre_processed_curves.process_threads, args=(
-                processinQqueue, answerQueue, finishedTheLines, name_telescope)))
+                processinQqueue, answerQueue, finishedTheLines, name_candidate)))
             threads[-1].start()
 
-        for _, row in df_telescope.iterrows():
+        for _, row in df_candidate.iterrows():
             processinQqueue.put_nowait(row)
 
         time.sleep(1)
@@ -55,9 +58,9 @@ if __name__ == '__main__':
 
                 # Finish processing the data
                 (target, data_local, data_global) = get_result
-                local_global_target.append(target)
-                local_curves.append(data_local)
-                global_curves.append(data_global)
+                local_global_target_candidate.append(target)
+                local_curves_candidate.append(data_local)
+                global_curves_candidate.append(data_global)
 
             except queue.Empty:
                 continue
@@ -74,4 +77,5 @@ if __name__ == '__main__':
     print(f"Runtime: {execution_time:.2f} seconds")
 
     # Calls the function to save the preprocessed data locally
-    pre_processed_curves.saving_preprocessed_data(local_curves, global_curves, local_global_target, candidate = False)
+    pre_processed_curves.saving_preprocessed_data(
+        local_curves_candidate, global_curves_candidate, local_global_target_candidate, candidate=True)

@@ -16,7 +16,7 @@ import shutil
 import numpy as np
 import pandas as pd
 import lightkurve as lk
-from General_Functions import general_data_functions
+from GeneralFunctions import general_data_functions
 
 # ============= Functions =============
 
@@ -129,7 +129,7 @@ def saving_preprocessed_data(local_curves, global_curves, local_global_target, c
     """
     
     if candidate:
-        local_path = 'Preprocessed_candidate'
+        local_path = 'PreprocessedCandidate'
         candidate_path = '_candidate'
     else:
         local_path = 'Preprocessed'
