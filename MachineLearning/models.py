@@ -136,13 +136,12 @@ def univariate_data(dataset, start_index, end_index, history_size, target_size):
 
 # ============= LSTM =============
 
-
 def method_LSTM(x_train_uni, y_train_uni, x_val_uni, y_val_uni):
 
     # Defining the datasets
 
-    BATCH_SIZE = 256
-    BUFFER_SIZE = 10000
+    BATCH_SIZE = 256 # quantidade de amostra para cada passagem no algortimo de treinamento
+    BUFFER_SIZE = 10000 # Gerenciar melhor a memória
 
     train_univariate = tf.data.Dataset.from_tensor_slices(
         (x_train_uni, y_train_uni))
@@ -156,10 +155,10 @@ def method_LSTM(x_train_uni, y_train_uni, x_val_uni, y_val_uni):
     simple_lstm_model = tf.keras.models.Sequential([
         tf.keras.layers.LSTM(8, input_shape=(
             x_train_uni.shape[1], y_train_uni.shape[2])),
-        tf.keras.layers.Dense(1)
+        tf.keras.layers.Dense(2, activation='softmax')
     ])
 
-    simple_lstm_model.compile(optimizer='adam', loss='mae')
+    simple_lstm_model.compile(optimizer='adam', loss='binary_crossentropy')
 
     simple_lstm_model.summary()
 
@@ -172,7 +171,7 @@ def method_LSTM(x_train_uni, y_train_uni, x_val_uni, y_val_uni):
 
     plot_train_history_LSTM(lstm_log, 'LSTM Training and validation loss')
 
-    future = 5
+    future = 1
 
     for x, y in val_univariate.take(5):
         plot = plot_preds_LSTM(

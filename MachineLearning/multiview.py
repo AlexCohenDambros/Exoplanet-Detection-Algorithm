@@ -9,7 +9,7 @@
 # ============= Imports =============
 
 import pandas as pd
-from General_Functions import load_saved_models
+from GeneralFunctions import load_saved_models
 
 
 # ============= Functions =============
