@@ -136,25 +136,27 @@ def univariate_data(dataset, start_index, end_index, history_size, target_size):
 
 # ============= LSTM =============
 
-def method_LSTM(x_train_uni, y_train_uni, x_val_uni, y_val_uni):
+
+def method_LSTM(x_train_uni, y_train_uni, x_val_uni, y_val_uni, univariate_past_history, future):
 
     # Defining the datasets
 
-    BATCH_SIZE = 256 # quantidade de amostra para cada passagem no algortimo de treinamento
-    BUFFER_SIZE = 10000 # Gerenciar melhor a memória
+    BATCH_SIZE = 256  # quantidade de amostra para cada passagem no algortimo de treinamento
+    BUFFER_SIZE = 10000  # Gerenciar melhor a memória
 
     train_univariate = tf.data.Dataset.from_tensor_slices(
         (x_train_uni, y_train_uni))
     train_univariate = train_univariate.cache().shuffle(
-        BUFFER_SIZE).batch(BATCH_SIZE).repeat()
+        BUFFER_SIZE).batch(BATCH_SIZE)
+    # .repeat()
 
     val_univariate = tf.data.Dataset.from_tensor_slices((x_val_uni, y_val_uni))
-    val_univariate = val_univariate.batch(BATCH_SIZE).repeat()
+    val_univariate = val_univariate.batch(BATCH_SIZE)
+    # .repeat()
 
     # Creating the architecture
     simple_lstm_model = tf.keras.models.Sequential([
-        tf.keras.layers.LSTM(8, input_shape=(
-            x_train_uni.shape[1], y_train_uni.shape[2])),
+        tf.keras.layers.LSTM(8, input_shape=(univariate_past_history, future)),
         tf.keras.layers.Dense(2, activation='softmax')
     ])
 
