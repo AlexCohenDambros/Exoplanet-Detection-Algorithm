@@ -11,3 +11,4 @@ tensorflow
 flask
 imbalanced-learn
 transitleastsquares
+deslib

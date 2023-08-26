@@ -12,6 +12,7 @@ from GeneralFunctions import save_models_results
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import accuracy_score
 from sklearn import metrics
 from scipy import stats
 from sklearn.exceptions import ConvergenceWarning, FitFailedWarning
@@ -24,6 +25,9 @@ import tensorflow as tf
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+
+from deslib.des import KNORAU
+from deslib.des.knora_e import KNORAE
 
 mpl.rcParams['figure.figsize'] = (8, 6)
 mpl.rcParams['axes.grid'] = False
@@ -41,6 +45,46 @@ warnings.filterwarnings("ignore", category=ConvergenceWarning)
 warnings.filterwarnings("ignore", category=FitFailedWarning)
 
 # ============= General Functions =============
+
+def dynamic_selection_of_classifiers(dict_classifiers, X_train, y_train, X_test, y_test, data_vision):
+    
+    pool_classifiers = []
+    cv = StratifiedKFold(10, random_state=42, shuffle=True)
+
+    start_time = time.time()
+
+    # Loops through all models within the dictionary, performs training and returns results
+    for name, model in dict_classifiers.items():
+        print("\n================================== Dynamic Selection ==================================")
+        print("Model:", name)
+
+        print(f"\n- Running models on data in a {data_vision} vision")
+        
+        clf = GridSearchCV(model['clf'], model['parameters'], cv=cv, scoring='accuracy', n_jobs=-1)
+
+        pool_classifiers.append(clf.fit(X_train, y_train))
+
+    # marks the end of the runtime
+    end_time = time.time()
+
+    # Calculates execution time in seconds
+    execution_time = end_time - start_time
+    print(f"\nRuntime: {execution_time:.2f} seconds")
+    
+    knorau = KNORAU(pool_classifiers, random_state=42).fit(X_train, y_train)
+    kne = KNORAE(pool_classifiers, random_state=42).fit(X_train, y_train)
+    
+    # Predict classes using KNORAU and KNORAE dynamic selection technique
+    selected_predictions_knorau = knorau.predict(X_test)
+    selected_predictions_kne = kne.predict(X_test)
+
+    # Calculate the accuracy of forecasts
+    acc_KNORAU = accuracy_score(y_test, selected_predictions_knorau)
+    acc_KNORAE= accuracy_score(y_test, selected_predictions_kne)
+    print("\nAccuracy using KNORAU with different classifiers:", acc_KNORAU)
+    print("\nAccuracy using KNORAE with different classifiers:", acc_KNORAE)
+
+    
 
 
 def compute_ks(y_test, y_pred_proba):
@@ -264,22 +308,22 @@ def run_classifier_models(name_model, sufix, clf, parameters, cv, X_train, y_tra
     return precision, recall, acc, f1, auc, ks, y_pred
 
 
-def defining_classifiers(dict_model_parameters, X_train, y_train, X_test, y_test, data_vision):
+def defining_classifiers(dict_classifiers, X_train, y_train, X_test, y_test, data_vision):
     """
     Description: 
        This function is used to train the classification models passed as parameters.
 
     Input parameters:
-       dict_model_parameters: Dictionary containing the models and parameters for training.
+       dict_classifiers: Dictionary containing the models and parameters for training.
 
     Return:
        None.
     """
 
-    if not isinstance(dict_model_parameters, dict):
+    if not isinstance(dict_classifiers, dict):
         raise TypeError("Parameter must be a dictionary.")
 
-    if len(dict_model_parameters) == 0:
+    if len(dict_classifiers) == 0:
         raise ValueError("Dictionary of parameters is empty.")
 
     results = {}
@@ -288,7 +332,7 @@ def defining_classifiers(dict_model_parameters, X_train, y_train, X_test, y_test
     start_time = time.time()
 
     # Loops through all models within the dictionary, performs training and returns results
-    for name, model in dict_model_parameters.items():
+    for name, model in dict_classifiers.items():
         print("\n============================================================================================================")
         print("Model:", name)
 
