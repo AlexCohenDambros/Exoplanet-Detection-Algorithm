@@ -201,8 +201,7 @@ def method_LSTM(x_train_uni, y_train_uni, x_val_uni, y_val_uni, univariate_past_
     # ============= Creating the architecture =============
     simple_lstm_model = tf.keras.models.Sequential([
         tf.keras.layers.LSTM(8, input_shape=(univariate_past_history, future)),
-        # tf.keras.layers.Dense(2, activation='softmax')
-        tf.keras.layers.Dense(1, activation="sigmoid")
+        tf.keras.layers.Dense(1, activation= tf.keras.activations.softmax)
 
     ])
 
@@ -212,7 +211,7 @@ def method_LSTM(x_train_uni, y_train_uni, x_val_uni, y_val_uni, univariate_past_
 
     # ============= Training LSTM =============
 
-    EPOCHS = 10
+    EPOCHS = 5
 
     lstm_log = simple_lstm_model.fit(train_univariate, epochs=EPOCHS,
                                      validation_data=val_univariate, validation_steps=50)
