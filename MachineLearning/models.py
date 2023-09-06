@@ -46,8 +46,9 @@ warnings.filterwarnings("ignore", category=FitFailedWarning)
 
 # ============= General Functions =============
 
+
 def dynamic_selection_of_classifiers(dict_classifiers, X_train, y_train, X_test, y_test, data_vision):
-    
+
     pool_classifiers = []
     cv = StratifiedKFold(10, random_state=42, shuffle=True)
 
@@ -59,8 +60,9 @@ def dynamic_selection_of_classifiers(dict_classifiers, X_train, y_train, X_test,
         print("Model:", name)
 
         print(f"\n- Running models on data in a {data_vision} vision")
-        
-        clf = GridSearchCV(model['clf'], model['parameters'], cv=cv, scoring='accuracy', n_jobs=-1)
+
+        clf = GridSearchCV(model['clf'], model['parameters'],
+                           cv=cv, scoring='accuracy', n_jobs=-1)
 
         pool_classifiers.append(clf.fit(X_train, y_train))
 
@@ -70,21 +72,19 @@ def dynamic_selection_of_classifiers(dict_classifiers, X_train, y_train, X_test,
     # Calculates execution time in seconds
     execution_time = end_time - start_time
     print(f"\nRuntime: {execution_time:.2f} seconds")
-    
+
     knorau = KNORAU(pool_classifiers, random_state=42).fit(X_train, y_train)
     kne = KNORAE(pool_classifiers, random_state=42).fit(X_train, y_train)
-    
+
     # Predict classes using KNORAU and KNORAE dynamic selection technique
     selected_predictions_knorau = knorau.predict(X_test)
     selected_predictions_kne = kne.predict(X_test)
 
     # Calculate the accuracy of forecasts
     acc_KNORAU = accuracy_score(y_test, selected_predictions_knorau)
-    acc_KNORAE= accuracy_score(y_test, selected_predictions_kne)
+    acc_KNORAE = accuracy_score(y_test, selected_predictions_kne)
     print("\nAccuracy using KNORAU with different classifiers:", acc_KNORAU)
     print("\nAccuracy using KNORAE with different classifiers:", acc_KNORAE)
-
-    
 
 
 def compute_ks(y_test, y_pred_proba):
@@ -192,16 +192,14 @@ def method_LSTM(x_train_uni, y_train_uni, x_val_uni, y_val_uni, univariate_past_
         (x_train_uni, y_train_uni))
     train_univariate = train_univariate.cache().shuffle(
         BUFFER_SIZE).batch(BATCH_SIZE)
-    # .repeat()
 
     val_univariate = tf.data.Dataset.from_tensor_slices((x_val_uni, y_val_uni))
     val_univariate = val_univariate.batch(BATCH_SIZE)
-    # .repeat()
 
     # ============= Creating the architecture =============
     simple_lstm_model = tf.keras.models.Sequential([
         tf.keras.layers.LSTM(8, input_shape=(univariate_past_history, future)),
-        tf.keras.layers.Dense(1, activation= tf.keras.activations.softmax)
+        tf.keras.layers.Dense(1, activation=tf.keras.activations.softmax)
 
     ])
 
@@ -211,14 +209,12 @@ def method_LSTM(x_train_uni, y_train_uni, x_val_uni, y_val_uni, univariate_past_
 
     # ============= Training LSTM =============
 
-    EPOCHS = 5
+    EPOCHS = 10
 
     lstm_log = simple_lstm_model.fit(train_univariate, epochs=EPOCHS,
                                      validation_data=val_univariate, validation_steps=50)
 
-    plot_train_history_LSTM(lstm_log, 'LSTM Training and validation loss')
-
-    future = 1
+    # plot_train_history_LSTM(lstm_log, 'LSTM Training and validation loss')
 
     for x, y in val_univariate.take(5):
         plot = plot_preds_LSTM(
