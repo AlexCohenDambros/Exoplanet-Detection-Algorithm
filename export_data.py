@@ -1,6 +1,6 @@
 import pandas as pd
 import lightkurve as lk
-from General_Functions import pre_processed_curves
+from GeneralFunctions import pre_processed_curves
 
 df_kepler = pre_processed_curves.open_datasets("KEPLER")
 

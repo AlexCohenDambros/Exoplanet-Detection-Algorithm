@@ -209,7 +209,7 @@ def method_LSTM(x_train_uni, y_train_uni, x_val_uni, y_val_uni, univariate_past_
 
     # ============= Training LSTM =============
 
-    EPOCHS = 10
+    EPOCHS = 20
 
     lstm_log = simple_lstm_model.fit(train_univariate, epochs=EPOCHS,
                                      validation_data=val_univariate, validation_steps=50)
