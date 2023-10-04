@@ -109,7 +109,7 @@ def open_datasets(name_telescope, candidates=False):
     return dataset_telescope
 
 
-def saving_preprocessed_data(local_curves, global_curves, local_global_target, candidate = False):
+def saving_preprocessed_data(local_curves, global_curves, local_global_target, id_target_candidate, candidate = False):
     
     """
     Description:
@@ -138,12 +138,15 @@ def saving_preprocessed_data(local_curves, global_curves, local_global_target, c
 
     df_local = pd.DataFrame(local_curves)
     df_global = pd.DataFrame(global_curves)
+    
+    df_global['label'] = pd.Series(local_global_target)
+    df_local['label'] = pd.Series(local_global_target)
+    
+    df_global["target"] = pd.Series(id_target_candidate)
+    df_local["target"] = pd.Series(id_target_candidate)
 
     df_global = df_global.interpolate(axis=1)
     df_local = df_local.interpolate(axis=1)
-
-    df_global['label'] = pd.Series(local_global_target)
-    df_local['label'] = pd.Series(local_global_target)
 
     # ============= Create the directory =============
     
@@ -234,11 +237,11 @@ def process_target(name_telescope, row):
             lc_global = (
                 lc_global / np.abs(lc_global.flux.min())) * 2.0 + 1
 
+            # ============= Defining local curves =============
             phase_mask = (
                 lc_fold.phase > -4*fractional_duration) & (lc_fold.phase < 4.0*fractional_duration)
             lc_zoom = lc_fold[phase_mask]
 
-            # ============= Defining local curves =============
             lc_local = lc_zoom.bin(bins=201).normalize() - 1
             lc_local = (
                 lc_local / np.abs(np.nanmin(lc_local.flux))) * 2.0 + 1
@@ -246,7 +249,7 @@ def process_target(name_telescope, row):
             print(
                 f"{id_target} target pre-processing performed, Disposition:{row[1]}")
 
-            return (row[1], lc_local.flux.value, lc_global.flux.value)
+            return (row[1], lc_local.flux.value, lc_global.flux.value, id_target)
 
         else:
             print("Error downloading target data:", id_target)

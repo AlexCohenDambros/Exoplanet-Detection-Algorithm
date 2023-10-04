@@ -22,6 +22,7 @@ if __name__ == '__main__':
     local_curves_candidate = []
     global_curves_candidate = []
     local_global_target_candidate = []
+    id_target_candidate = []
 
     for name_candidate, df_candidate in telescopes_list.items():
 
@@ -57,10 +58,11 @@ if __name__ == '__main__':
                     continue
 
                 # Finish processing the data
-                (target, data_local, data_global) = get_result
+                (target, data_local, data_global, id_target) = get_result
                 local_global_target_candidate.append(target)
                 local_curves_candidate.append(data_local)
                 global_curves_candidate.append(data_global)
+                id_target_candidate.append(id_target)
 
             except queue.Empty:
                 continue
@@ -78,4 +80,4 @@ if __name__ == '__main__':
 
     # Calls the function to save the preprocessed data locally
     pre_processed_curves.saving_preprocessed_data(
-        local_curves_candidate, global_curves_candidate, local_global_target_candidate, candidate=True)
+        local_curves_candidate, global_curves_candidate, local_global_target_candidate, id_target_candidate, candidate=True)
