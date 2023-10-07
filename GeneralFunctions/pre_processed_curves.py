@@ -144,10 +144,6 @@ def saving_preprocessed_data(local_curves, global_curves, local_global_target, i
     
     df_global["target"] = pd.Series(id_target_candidate)
     df_local["target"] = pd.Series(id_target_candidate)
-
-    df_global = df_global.interpolate(axis=1)
-    df_local = df_local.interpolate(axis=1)
-
     # ============= Create the directory =============
     
     get_current_path = os.getcwd()

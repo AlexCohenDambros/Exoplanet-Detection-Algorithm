@@ -6,7 +6,7 @@ from multiprocessing import Process, Manager, Queue, freeze_support
 
 if __name__ == '__main__':
 
-    num_threads = pre_processed_curves.multiprocessing.cpu_count()
+    num_threads = multiprocessing.cpu_count()
 
     start_time = time.time()
 
@@ -16,7 +16,7 @@ if __name__ == '__main__':
         "KEPLER", candidates=True)
 
     # TEST
-    telescopes_list = {'TESS': df_tess_candidates, 'Kepler': df_kepler_candidates}
+    telescopes_list = {'Kepler': df_kepler_candidates}
 
     # ============= Execution of threads for data pre-processing =============
     local_curves_candidate = []
