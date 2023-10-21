@@ -29,6 +29,9 @@ import numpy as np
 from deslib.des import KNORAU
 from deslib.des.knora_e import KNORAE
 
+import os 
+import joblib
+
 mpl.rcParams['figure.figsize'] = (8, 6)
 mpl.rcParams['axes.grid'] = False
 
@@ -46,35 +49,35 @@ warnings.filterwarnings("ignore", category=FitFailedWarning)
 
 # ============= General Functions =============
 
+def load_models_in_folder(folder, data_vision):
+    models = []
+    if os.path.exists(folder) and os.path.isdir(folder):
+        for root, dirs, files in os.walk(folder):
+    
+            for file in files:
+                try:
+                    if file.endswith(".pkl") and file.endswith(f"_{data_vision}.pkl"):
+                        print(file)
+                        model_path = os.path.join(root, file)
+                        loaded_model = joblib.load(model_path)  # Replace with pickle.load if using pickle.
+                        models.append(loaded_model)
+                except Exception as e:
+                    print("Error: ", file)
+    return models
 
-def dynamic_selection_of_classifiers(dict_classifiers, X_train, y_train, X_test, y_test, data_vision):
-
-    pool_classifiers = []
-    cv = StratifiedKFold(10, random_state=42, shuffle=True)
+def dynamic_selection_of_classifiers(X_train, y_train, X_test, y_test, data_vision):
 
     start_time = time.time()
+    
+    pool_classifiers = load_models_in_folder("SavedModels", data_vision)
+   
+    # Create instances of KNORAU and KNORAE
+    knorau = KNORAU(pool_classifiers=pool_classifiers)
+    kne = KNORAE(pool_classifiers=pool_classifiers)
 
-    # Loops through all models within the dictionary, performs training and returns results
-    for name, model in dict_classifiers.items():
-        print("\n================================== Dynamic Selection ==================================")
-        print("Model:", name)
-
-        print(f"\n- Running models on data in a {data_vision} vision")
-
-        clf = GridSearchCV(model['clf'], model['parameters'],
-                           cv=cv, scoring='accuracy', n_jobs=-1)
-
-        pool_classifiers.append(clf.fit(X_train, y_train))
-
-    # marks the end of the runtime
-    end_time = time.time()
-
-    # Calculates execution time in seconds
-    execution_time = end_time - start_time
-    print(f"\nRuntime: {execution_time:.2f} seconds")
-
-    knorau = KNORAU(pool_classifiers, random_state=42).fit(X_train, y_train)
-    kne = KNORAE(pool_classifiers, random_state=42).fit(X_train, y_train)
+    # Fit the KNORAU and KNORAE classifiers to your data
+    knorau.fit(X_train, y_train)
+    kne.fit(X_train, y_train)
 
     # Predict classes using KNORAU and KNORAE dynamic selection technique
     selected_predictions_knorau = knorau.predict(X_test)
@@ -85,6 +88,13 @@ def dynamic_selection_of_classifiers(dict_classifiers, X_train, y_train, X_test,
     acc_KNORAE = accuracy_score(y_test, selected_predictions_kne)
     print("\nAccuracy using KNORAU with different classifiers:", acc_KNORAU)
     print("\nAccuracy using KNORAE with different classifiers:", acc_KNORAE)
+    
+    # marks the end of the runtime
+    end_time = time.time()
+
+    # Calculates execution time in seconds
+    execution_time = end_time - start_time
+    print(f"\nRuntime: {execution_time:.2f} seconds")
 
 
 def compute_ks(y_test, y_pred_proba):
